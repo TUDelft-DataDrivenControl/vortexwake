@@ -1,0 +1,7 @@
+{
+  "dimension": 2,
+  "time_step": 0.25,
+  "num_rings": 35,
+  "num_turbines": 1,
+  "turbine_positions": [[0,0]]
+}
