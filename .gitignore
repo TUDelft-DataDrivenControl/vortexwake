@@ -1,0 +1,36 @@
+# Compiled source
+*.o
+*.Plo
+*.Po
+*.lo
+*.la
+*.a
+*.os
+*.pyc
+*.so
+*.pc
+*.pyd
+*.def
+*.dll
+*.exe
+*.dylib
+
+
+# figures and output
+*.pdf
+*.png
+*.vtu
+*.pvd
+*.log
+
+
+.idea
+results
+data
+log
+jit*
+docs/build/*
+
+
+*.sublime-project
+*.sublime-workspace
