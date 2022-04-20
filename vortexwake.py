@@ -60,6 +60,11 @@ class VortexWake:
 
 
 def rot_z(psi):
+    """
+    3D rotation matrix, clockwise positive around z-axis
+    :param psi: rotation angle (radians)
+    :return: 3x3 rotation matrix
+    """
     R = np.array([[np.cos(psi), np.sin(psi), 0.],
                   [-np.sin(psi), np.cos(psi), 0.],
                   [0., 0., 1.]])
@@ -67,6 +72,11 @@ def rot_z(psi):
 
 
 def drot_z_dpsi(psi):
+    """
+    Derivative to angle of 3D rotation matrix, clockwise positive around z-axis
+    :param psi: rotation angle (radians)
+    :return: 3x3 rotation matrix derivative
+    """
     dR_dpsi = np.array([[-np.sin(psi), np.cos(psi), 0],
                         [-np.cos(psi), -np.sin(psi), 0],
                         [0, 0, 0.]])
