@@ -29,7 +29,7 @@ class VortexWake:
             self.X_index_end = self.dim * self.total_points
             self.G_index_start = self.X_index_end
             # todo: reformulate such that single Gamma per ring
-            self.G_index_end = self.G_index_start + self.total_rings
+            self.G_index_end = self.G_index_start + self.total_elements
             self.U_index_start = self.G_index_end
             self.U_index_end = self.U_index_start + self.dim * self.total_points
             self.M_index_start = self.U_index_end
@@ -37,7 +37,7 @@ class VortexWake:
 
     def states_from_state_vector(self, q):
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
-        G = q[self.G_index_start: self.G_index_end].reshape(self.total_rings, 1)
+        G = q[self.G_index_start: self.G_index_end].reshape(self.total_elements, 1)
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
         M = q[self.M_index_start: self.M_index_end].reshape(self.num_controls, 1)
         return X, G, U, M
