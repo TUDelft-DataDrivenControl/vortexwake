@@ -22,7 +22,6 @@ class VortexWake:
             self.total_controls = self.num_controls * self.num_turbines
             self.num_states = (self.dim * self.total_points * 2) + self.total_elements + self.total_controls
 
-
             self.time_step = config["time_step"]
 
             self.X_index_start = 0
@@ -58,3 +57,17 @@ class VortexWake:
 
         q[self.M_index_start:self.M_index_end, 0] = M.ravel()
         return q
+
+
+def rot_z(psi):
+    R = np.array([[np.cos(psi), np.sin(psi), 0.],
+                  [-np.sin(psi), np.cos(psi), 0.],
+                  [0., 0., 1.]])
+    return R
+
+
+def drot_z_dpsi(psi):
+    dR_dpsi = np.array([[-np.sin(psi), np.cos(psi), 0],
+                        [-np.cos(psi), -np.sin(psi), 0],
+                        [0, 0, 0.]])
+    return dR_dpsi
