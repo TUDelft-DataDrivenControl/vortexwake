@@ -3,7 +3,10 @@ import json
 
 
 class VortexWake:
+    """Class for wake simulation with Free-Vortex method.
+    2D or 3D, with discrete adjoint for gradients.
 
+    """
     def __init__(self, config_file):
         with open(config_file, "r") as cf:
             config = json.load(cf)
@@ -62,6 +65,11 @@ class VortexWake:
                 self.drot_z_dpsi = drot_z_dpsi_3d
 
     def states_from_state_vector(self, q):
+        """Unpack state column vector into state arrays
+
+        :param q:
+        :return:
+        """
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
         G = q[self.G_index_start: self.G_index_end].reshape(self.total_elements, 1)
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
@@ -69,6 +77,14 @@ class VortexWake:
         return X, G, U, M
 
     def state_vector_from_states(self, X, G, U, M):
+        """Pack state arrays into a single column vector
+
+        :param X:
+        :param G:
+        :param U:
+        :param M:
+        :return:
+        """
         q = np.zeros((self.num_states, 1))
         q[self.X_index_start:self.X_index_end:self.dim, 0] = X[:, :, 0].ravel()
         q[self.X_index_start + 1:self.X_index_end:self.dim, 0] = X[:, :, 1].ravel()
@@ -86,6 +102,10 @@ class VortexWake:
         return q
 
     def initialise_states(self):
+        """Initialise states for start of numerical simulation
+
+        :return: states
+        """
         X,G,U,M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
         (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros(self.num_states), np.zeros(self.total_controls), self.unit_vector_x)
         X[::self.num_rings] = X0
@@ -95,6 +115,14 @@ class VortexWake:
         return X,G,U,M
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
+        """Generate values for new rings to initialised.
+
+        :param states: state vector
+        :param controls: control vector
+        :param inflow: inflow [dim] or [num_points x dim]
+        :param with_tangent:
+        :return: new ring states, new ring state derivatives
+        """
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         G0 = np.zeros((self.num_turbines, 1))
         U0 = np.zeros((self.num_turbines, self.num_points, self.dim))
