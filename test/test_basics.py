@@ -149,7 +149,7 @@ class TestVortexWake(unittest.TestCase):
     def test_velocity(self):
         fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
         number_of_points = self.rng.integers(1, 20)
-        p =self.rng.standard_normal((number_of_points, self.dimension))
+        p = self.rng.standard_normal((number_of_points, self.dimension))
         q = self.random_state_vector()
         m = self.random_control_vector()
         u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
@@ -163,6 +163,15 @@ class TestVortexWake(unittest.TestCase):
         ur_no_tangent, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=False)
         ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
         test.assert_almost_equal(ur_no_tangent, ur)
+
+    def test_update_state(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q = self.rng.random((fvw.num_states, 1))
+        m = self.rng.random(fvw.total_controls)
+        u = self.random_inflow_vector()
+        qk_no_tangent, dqn_dq, dqn_dm = fvw.update_state(q, m, u, with_tangent=False)
+        qk, dqn_dq, dqn_dm = fvw.update_state(q, m, u, with_tangent=True)
+        test.assert_almost_equal(qk_no_tangent, qk)
 
 
 class TestVortexWake3D(TestVortexWake):
@@ -218,6 +227,11 @@ class TestVortexWake2D(TestVortexWake):
     @unittest.skip("not implemented yet")
     def test_velocity(self):
         super().test_velocity()
+
+    @unittest.skip("not implemented yet")
+    def test_update_state(self):
+        super().test_update_state()
+
 
 # todo: generalise set up
 # todo: test magnitude of vortex strength
