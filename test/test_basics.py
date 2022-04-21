@@ -80,20 +80,20 @@ def test_rotation():
     unit_vector_y = np.array([0, 1, 0])
     unit_vector_z = np.array([0, 0, 1])
     theta = 0.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z_3d(theta).T, unit_vector_x)
     theta = 360.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z_3d(theta).T, unit_vector_x)
     theta = -180.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, -unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z_3d(theta).T, -unit_vector_x)
 
     theta = 90.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, -unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z_3d(theta).T, -unit_vector_y)
     theta = -90.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z_3d(theta).T, unit_vector_y)
 
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(10):
-        test.assert_almost_equal(unit_vector_z @ vw.rot_z(theta).T, unit_vector_z)
+        test.assert_almost_equal(unit_vector_z @ vw.rot_z_3d(theta).T, unit_vector_z)
 
 
 def test_rotation_derivative():
@@ -101,21 +101,26 @@ def test_rotation_derivative():
     unit_vector_y = np.array([0, 1, 0])
     unit_vector_z = np.array([0, 0, 1])
     theta = 0.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_y * (np.pi / 180.))
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi_3d(theta).T, -unit_vector_y * (np.pi / 180.))
     theta = 360.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_y * (np.pi / 180.))
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi_3d(theta).T, -unit_vector_y * (np.pi / 180.))
     theta = -180.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, unit_vector_y * (np.pi / 180.))
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi_3d(theta).T, unit_vector_y * (np.pi / 180.))
 
     theta = 90.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_x * (np.pi / 180.))
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi_3d(theta).T, -unit_vector_x * (np.pi / 180.))
     theta = -90.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, unit_vector_x * (np.pi / 180.))
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi_3d(theta).T, unit_vector_x * (np.pi / 180.))
 
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(10):
-        test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi(theta).T, np.zeros(3))
+        test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi_3d(theta).T, np.zeros(3))
 
+def test_rotation_2d():
+    rng = np.random.default_rng()
+    for theta in 360 * rng.standard_normal(20):
+        test.assert_allclose(vw.rot_z_2d(theta), vw.rot_z_3d(theta)[0:2, 0:2])
+        test.assert_allclose(vw.drot_z_dpsi_2d(theta), vw.drot_z_dpsi_3d(theta)[0:2,0:2])
 
 def test_new_rings_3d():
     rng = np.random.default_rng()
@@ -133,6 +138,23 @@ def test_new_rings_3d():
     (dX0_dq,dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
     for a,b in zip(new_ring_states, new_ring_states_no_tangent):
         test.assert_allclose(a,b)
+
+def test_new_rings_2d():
+    rng = np.random.default_rng()
+    fvw = vw.VortexWake("../config/base_2d.json")
+    q = rng.random(fvw.num_states)
+    m = rng.random(fvw.num_controls)
+    u = rng.random(fvw.dim)
+    new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
+    X0, G0, U0, M0 = new_ring_states_no_tangent
+    (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+
+    fvw.new_rings(q, m, u, with_tangent=True)
+    new_ring_states, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
+    X0, G0, U0, M0 = new_ring_states
+    (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+    for a, b in zip(new_ring_states, new_ring_states_no_tangent):
+        test.assert_allclose(a, b)
 
 
 def test_disc_velocity():

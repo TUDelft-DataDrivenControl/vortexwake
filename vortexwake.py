@@ -46,6 +46,15 @@ class VortexWake:
             self.induction_idx = 0
             self.yaw_idx = 1
 
+            self.unit_vector_x = np.zeros(self.dim)
+            self.unit_vector_x[0] = 1
+            if self.dim == 2:
+                self.rot_z = rot_z_2d
+                self.drot_z_dpsi = drot_z_dpsi_2d
+            elif self.dim == 3:
+                self.rot_z = rot_z_3d
+                self.drot_z_dpsi = drot_z_dpsi_3d
+
     def states_from_state_vector(self, q):
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
         G = q[self.G_index_start: self.G_index_end].reshape(self.total_elements, 1)
@@ -82,7 +91,7 @@ class VortexWake:
         M0 = np.zeros((self.num_controls, 1))
 
         dX0_dq = None
-        dX0_dm = np.zeros((self.num_turbines, self.dim*self.num_points,self.total_controls))
+        dX0_dm = np.zeros((self.num_turbines, self.dim * self.num_points, self.total_controls))
 
         dG0_dq = np.zeros((self.num_turbines, self.num_states))
         dG0_dm = np.zeros((self.num_turbines, self.total_controls))
@@ -108,20 +117,20 @@ class VortexWake:
 
         ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
         for wt in range(self.num_turbines):
-            X0[wt, :] = X0[wt, :] @ rot_z(psi[wt]).T
+            X0[wt, :] = X0[wt, :] @ self.rot_z(psi[wt]).T
             X0[wt] += self.turbine_positions[wt]
 
             thrust_coefficient = 4 * a[wt] / (1 - a[wt])
-            n = np.array([1, 0, 0]) @ rot_z(psi[wt]).T
+            n = self.unit_vector_x @ self.rot_z(psi[wt]).T
 
             # todo: move deg2rad conversion to rotation matrix
             G0 = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
             if with_tangent:
-                dn_dpsi = np.array([1, 0, 0]) @ drot_z_dpsi(psi[wt]).T
+                dn_dpsi = self.unit_vector_x @ self.drot_z_dpsi(psi[wt]).T
 
                 dX0_dm[wt, :, self.yaw_idx + self.num_controls * wt] = np.reshape(
-                    X0[wt, :] @ drot_z_dpsi(psi[wt]).T,
+                    X0[wt, :] @ self.drot_z_dpsi(psi[wt]).T,
                     (self.num_points * self.dim,))
 
                 dG0_dur = h * thrust_coefficient * n * (ur[wt].T @ n)
@@ -159,8 +168,31 @@ class VortexWake:
 # def evaluate_cost_function(
 # construct_gradient
 
+def rot_z_2d(psi):
+    """2D rotation matrix, clockwise positive around z-axis
 
-def rot_z(psi):
+    :param psi: rotation angle (degrees)
+    :returns: 2x2 rotation matrix
+    """
+    psi = np.deg2rad(psi)
+    R = np.array([[np.cos(psi), np.sin(psi)],
+                  [-np.sin(psi), np.cos(psi)]])
+    return R
+
+
+def drot_z_dpsi_2d(psi):
+    """Derivative to angle of 3D rotation matrix, clockwise positive around z-axis
+
+    :param psi: rotation angle (degrees)
+    :returns: 2x2 rotation matrix derivative (degrees$^{-1}$)
+    """
+    psi = np.deg2rad(psi)
+    dR_dpsi = np.array([[-np.sin(psi), np.cos(psi)],
+                        [-np.cos(psi), -np.sin(psi)]])
+    return np.deg2rad(dR_dpsi)
+
+
+def rot_z_3d(psi):
     """3D rotation matrix, clockwise positive around z-axis
 
     :param psi: rotation angle (degrees)
@@ -173,11 +205,10 @@ def rot_z(psi):
     return R
 
 
-def drot_z_dpsi(psi):
+def drot_z_dpsi_3d(psi):
     """Derivative to angle of 3D rotation matrix, clockwise positive around z-axis
 
     :param psi: rotation angle (degrees)
-
     :returns: 3x3 rotation matrix derivative (degrees$^{-1}$)
     """
     psi = np.deg2rad(psi)
