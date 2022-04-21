@@ -5,40 +5,6 @@ import numpy.testing as test
 import json
 
 
-# class MyTest(unittest.TestCase):
-#     def test_state_vector_conversions(self):
-#         rng = np.random.default_rng()
-#
-#         fvw2 = vw.VortexWake("../config/base_2d.json")
-#         q = rng.random((fvw2.num_states, 1))
-#         self.assertEqual(q, fvw2.state_vector_from_states(*fvw2.states_from_state_vector(q)))
-#         # fvw3 = vw.VortexWake("base_2d.json")
-
-
-def test_state_vector_conversions_2d():
-    rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_2d.json")
-    q = rng.random((fvw.num_states, 1))
-    states = fvw.states_from_state_vector(q)
-    test.assert_allclose(q, fvw.state_vector_from_states(*states))
-
-
-def test_state_vector_conversions_3d():
-    rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_3d.json")
-    q = rng.random((fvw.num_states, 1))
-    states = fvw.states_from_state_vector(q)
-    test.assert_allclose(q, fvw.state_vector_from_states(*states))
-
-
-def test_state_unpack():
-    rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_3d.json")
-    q = rng.random((fvw.num_states, 1))
-    states = fvw.states_from_state_vector(q)
-    test.assert_equal(len(states), 4)
-
-
 def np_encoder(object):
     if isinstance(object, np.generic):
         return object.item()
@@ -60,21 +26,6 @@ def generate_random_config(dim=3):
     with open(config_name, "w") as f:
         json.dump(config, f, default=np_encoder, separators=(", ", ': '), indent=4)
     return config, config_name
-
-
-def test_config():
-    for dim in [2, 3]:
-        config, config_name = generate_random_config(dim)
-        fvw = vw.VortexWake(config_name)
-        test.assert_equal(fvw.dim, config["dimension"])
-        test.assert_equal(fvw.time_step, config["time_step"])
-        test.assert_equal(fvw.num_rings, config["num_rings"])
-        if dim==2:
-            test.assert_equal(fvw.num_elements, 1)
-        elif dim==3:
-            test.assert_equal(fvw.num_elements, config["num_elements"])
-        test.assert_equal(fvw.num_turbines, config["num_turbines"])
-    # test.assert_equal(fvw., config["dimension"])
 
 
 def test_rotation():
@@ -119,106 +70,137 @@ def test_rotation_derivative():
     for theta in 360 * rng.standard_normal(10):
         test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi_3d(theta).T, np.zeros(3))
 
+
 def test_rotation_2d():
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(20):
         test.assert_allclose(vw.rot_z_2d(theta), vw.rot_z_3d(theta)[0:2, 0:2])
-        test.assert_allclose(vw.drot_z_dpsi_2d(theta), vw.drot_z_dpsi_3d(theta)[0:2,0:2])
-
-def test_new_rings_3d():
-    rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_3d.json")
-    q = rng.random(fvw.num_states)
-    m = rng.random(fvw.total_controls)
-    u = rng.random(fvw.dim)
-    new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
-    X0, G0, U0, M0 = new_ring_states_no_tangent
-    (dX0_dq,dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
-
-    fvw.new_rings(q, m, u, with_tangent=True)
-    new_ring_states, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
-    X0, G0, U0, M0 = new_ring_states
-    (dX0_dq,dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
-    for a,b in zip(new_ring_states, new_ring_states_no_tangent):
-        test.assert_allclose(a,b)
-
-    #todo: test actual position of points
-
-def test_new_rings_2d():
-    rng = np.random.default_rng()
-    # fvw = vw.VortexWake("../config/base_2d.json")
-    config, config_name = generate_random_config(2)
-    fvw = vw.VortexWake(config_name)
-    q = rng.random(fvw.num_states)
-    m = rng.random(fvw.total_controls)
-    u = rng.random(fvw.dim)
-    new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
-    X0, G0, U0, M0 = new_ring_states_no_tangent
-    (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
-
-    fvw.new_rings(q, m, u, with_tangent=True)
-    new_ring_states, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
-    X0, G0, U0, M0 = new_ring_states
-    (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
-    for a, b in zip(new_ring_states, new_ring_states_no_tangent):
-        test.assert_allclose(a, b)
-
-    for wt in range(fvw.num_turbines):
-        test.assert_almost_equal(np.linalg.norm(X0[wt,0]-X0[wt,1]),1) # unit diameter
-        test.assert_almost_equal(X0[wt,0]+X0[wt,1] - 2*fvw.turbine_positions[wt], np.zeros(2)) # opposing points and position
+        test.assert_allclose(vw.drot_z_dpsi_2d(theta), vw.drot_z_dpsi_3d(theta)[0:2, 0:2])
 
 
-def test_disc_velocity():
-    rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_3d.json")
-    q = rng.random(fvw.num_states)
-    m = rng.random(fvw.total_controls)
-    u = rng.random(fvw.dim)
-    ur, dur_dq, dur_dm = fvw.disc_velocity(q,m,with_tangent=True)
-    print(ur.shape, dur_dq.shape, dur_dm.shape)
+class TestVortexWake(unittest.TestCase):
 
-def test_initialise_states():
-    for dim in [2, 3]:
-        config, config_name = generate_random_config(dim)
-        fvw = vw.VortexWake(config_name)
-        X,G,U,M = fvw.initialise_states()
-        q = fvw.state_vector_from_states(X,G,U,M)
+    def setUp(self):
+        self.skipTest("Testing delegated to 2D and 3D subclasses.")
+        self.rng = None  # np.random.default_rng()
+        self.fvw = None
+        self.dimension = None
 
-def test_velocity():
-    rng = np.random.default_rng()
-    for dim in [2,3]:
-        number_of_points = rng.integers(1,20)
-        p = rng.standard_normal((number_of_points,dim))
-        config, config_name = generate_random_config(dim)
-        fvw = vw.VortexWake(config_name)
-        q = rng.random(fvw.num_states)
-        m = rng.random(fvw.total_controls)
-        u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
-        u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
-        test.assert_equals(u_no_tangent, u)
+    def test_config(self):
+        test.assert_equal(self.fvw.dim, self.config["dimension"])
+        test.assert_equal(self.fvw.time_step, self.config["time_step"])
+        test.assert_equal(self.fvw.num_rings, self.config["num_rings"])
+        test.assert_equal(self.fvw.num_turbines, self.config["num_turbines"])
+
+    def test_state_vector_conversions(self):
+        q = self.rng.random((self.fvw.num_states, 1))
+        states = self.fvw.states_from_state_vector(q)
+        test.assert_allclose(q, self.fvw.state_vector_from_states(*states))
+
+    def test_state_unpack(self):
+        q = self.rng.random((self.fvw.num_states, 1))
+        states = self.fvw.states_from_state_vector(q)
+        test.assert_equal(len(states), 4)
+
+    def test_initialise_states(self):
+        X, G, U, M = self.fvw.initialise_states()
+        q = self.fvw.state_vector_from_states(X, G, U, M)
+        self.assertEqual(q.shape[0], self.fvw.num_states)
+
+    def random_state_vector(self):
+        return self.rng.random((self.fvw.num_states, 1))
+
+    def random_control_vector(self):
+        return self.rng.random(self.fvw.total_controls)
+
+    def random_inflow_vector(self):
+        return self.rng.random(self.dimension)
+
+    def test_new_rings(self):
+        q = self.random_state_vector()
+        m = self.random_control_vector()
+        u = self.random_inflow_vector()
+
+        new_ring_states_no_tangent, new_ring_derivatives = self.fvw.new_rings(q, m, u, with_tangent=False)
+        X0, G0, U0, M0 = new_ring_states_no_tangent
+        (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+
+        new_ring_states, new_ring_derivatives = self.fvw.new_rings(q, m, u, with_tangent=True)
+        X0, G0, U0, M0 = new_ring_states
+        (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+        for a, b in zip(new_ring_states, new_ring_states_no_tangent):
+            test.assert_allclose(a, b)
+
+# def test_disc_velocity():
+#     rng = np.random.default_rng()
+#     fvw = vw.VortexWake("../config/base_3d.json")
+#     q = rng.random(fvw.num_states)
+#     m = rng.random(fvw.total_controls)
+#     u = rng.random(fvw.dim)
+#     ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
+#     print(ur.shape, dur_dq.shape, dur_dm.shape)
+#
+#
+# def test_velocity():
+#     rng = np.random.default_rng()
+#     for dim in [2, 3]:
+#         number_of_points = rng.integers(1, 20)
+#         p = rng.standard_normal((number_of_points, dim))
+#         config, config_name = generate_random_config(dim)
+#         fvw = vw.VortexWake(config_name)
+#         q = rng.random(fvw.num_states)
+#         m = rng.random(fvw.total_controls)
+#         u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
+#         u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
+#         test.assert_equals(u_no_tangent, u)
 
 
+class TestVortexWake3D(TestVortexWake):
 
+    def setUp(self):
+        self.rng = np.random.default_rng()
+        self.config, config_name = generate_random_config(3)
+        self.vw = vw.VortexWake3D
+        self.fvw = vw.VortexWake3D(config_name)
+        self.dimension = 3
 
-def test_class_vortexwake3d():
-    config, config_name = generate_random_config(3)
-    fvw = vw.VortexWake3D(config_name)
-
-class TestVortexWake3D(unittest.TestCase):
-
-    def test_class_vortexwake3d(self):
+    def test_class_dimension_error(self):
         config, config_name = generate_random_config(3)
-        fvw = vw.VortexWake3D(config_name)
         self.assertRaises(ValueError, vw.VortexWake2D, config_name)
 
+    # todo: def test_new_ring_positions(self):
 
-class TestVortexWake2D(unittest.TestCase):
+    def test_config_3d(self):
+        test.assert_equal(self.fvw.num_elements, self.config["num_elements"])
 
-    def test_class_vortexwake2d(self):
+
+class TestVortexWake2D(TestVortexWake):
+    def setUp(self):
+        self.rng = np.random.default_rng()
+        self.config, config_name = generate_random_config(2)
+        self.fvw = vw.VortexWake2D(config_name)
+        self.dimension = 2
+
+    def test_class_dimension_error(self):
         config, config_name = generate_random_config(2)
-        fvw = vw.VortexWake2D(config_name)
         self.assertRaises(ValueError, vw.VortexWake3D, config_name)
 
-#todo: generalise set up
-#todo: test magnitude of vortex strength
-#todo: robust derivative testing?
+    def test_new_ring_positions(self):
+        q = self.random_state_vector()
+        m = self.random_control_vector()
+        u = self.random_inflow_vector()
+
+        new_ring_states, new_ring_derivatives = self.fvw.new_rings(q, m, u, with_tangent=True)
+        X0, G0, U0, M0 = new_ring_states
+        for wt in range(self.fvw.num_turbines):
+            test.assert_almost_equal(np.linalg.norm(X0[wt, 0] - X0[wt, 1]), 1)  # unit diameter
+            test.assert_almost_equal(X0[wt, 0] + X0[wt, 1] - 2 * self.fvw.turbine_positions[wt],
+                                     np.zeros(2))  # opposing points and position
+
+
+    def test_config_2d(self):
+        test.assert_equal(self.fvw.num_elements, 1)
+
+# todo: generalise set up
+# todo: test magnitude of vortex strength
+# todo: robust derivative testing?
