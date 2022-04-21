@@ -69,7 +69,10 @@ def test_config():
         test.assert_equal(fvw.dim, config["dimension"])
         test.assert_equal(fvw.time_step, config["time_step"])
         test.assert_equal(fvw.num_rings, config["num_rings"])
-        test.assert_equal(fvw.num_elements, config["num_elements"])
+        if dim==2:
+            test.assert_equal(fvw.num_elements, 1)
+        elif dim==3:
+            test.assert_equal(fvw.num_elements, config["num_elements"])
         test.assert_equal(fvw.num_turbines, config["num_turbines"])
     # test.assert_equal(fvw., config["dimension"])
 
@@ -126,7 +129,7 @@ def test_new_rings_3d():
     rng = np.random.default_rng()
     fvw = vw.VortexWake("../config/base_3d.json")
     q = rng.random(fvw.num_states)
-    m = rng.random(fvw.num_controls)
+    m = rng.random(fvw.total_controls)
     u = rng.random(fvw.dim)
     new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
     X0, G0, U0, M0 = new_ring_states_no_tangent
@@ -143,9 +146,11 @@ def test_new_rings_3d():
 
 def test_new_rings_2d():
     rng = np.random.default_rng()
-    fvw = vw.VortexWake("../config/base_2d.json")
+    # fvw = vw.VortexWake("../config/base_2d.json")
+    config, config_name = generate_random_config(2)
+    fvw = vw.VortexWake(config_name)
     q = rng.random(fvw.num_states)
-    m = rng.random(fvw.num_controls)
+    m = rng.random(fvw.total_controls)
     u = rng.random(fvw.dim)
     new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
     X0, G0, U0, M0 = new_ring_states_no_tangent
@@ -171,6 +176,14 @@ def test_disc_velocity():
     u = rng.random(fvw.dim)
     ur, dur_dq, dur_dm = fvw.disc_velocity(q,m,with_tangent=True)
     print(ur.shape, dur_dq.shape, dur_dm.shape)
+
+def test_initialise_states():
+    for dim in [2, 3]:
+        config, config_name = generate_random_config(dim)
+        fvw = vw.VortexWake(config_name)
+        X,G,U,M = fvw.initialise_states()
+        q = fvw.state_vector_from_states(X,G,U,M)
+
 
 #todo: generalise set up
 #todo: test magnitude of vortex strength

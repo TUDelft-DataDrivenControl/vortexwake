@@ -10,6 +10,8 @@ class VortexWake:
 
             self.dim = config["dimension"]
             self.num_elements = config.get("num_elements", 1)
+            if self.dim==2:
+                self.num_elements = 1
 
             self.num_rings = config["num_rings"]
             self.num_points = self.num_elements + 1
@@ -63,7 +65,7 @@ class VortexWake:
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
         G = q[self.G_index_start: self.G_index_end].reshape(self.total_elements, 1)
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
-        M = q[self.M_index_start: self.M_index_end].reshape(self.num_controls, 1)
+        M = q[self.M_index_start: self.M_index_end].reshape(self.total_controls, 1)
         return X, G, U, M
 
     def state_vector_from_states(self, X, G, U, M):
@@ -83,16 +85,20 @@ class VortexWake:
         q[self.M_index_start:self.M_index_end, 0] = M.ravel()
         return q
 
-    # todo:
-    # def initialise_states(self):
-    # def new_rings(self):
-    # def new_rings_with_tangent(self):
+    def initialise_states(self):
+        X,G,U,M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
+        (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros(self.num_states), np.zeros(self.total_controls), self.unit_vector_x)
+        X[::self.num_rings] = X0
+        G[::self.num_rings] = G0
+        U[::self.num_rings] = U0
+        M[:] = M0
+        return X,G,U,M
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         G0 = np.zeros((self.num_turbines, 1))
         U0 = np.zeros((self.num_turbines, self.num_points, self.dim))
-        M0 = np.zeros((self.num_controls, 1))
+        M0 = np.zeros((self.total_controls, 1))
 
         dX0_dq = None
         dX0_dm = np.zeros((self.num_turbines, self.dim * self.num_points, self.total_controls))
