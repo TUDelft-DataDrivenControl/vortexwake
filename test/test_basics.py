@@ -172,7 +172,7 @@ def test_disc_velocity():
     rng = np.random.default_rng()
     fvw = vw.VortexWake("../config/base_3d.json")
     q = rng.random(fvw.num_states)
-    m = rng.random(fvw.num_controls)
+    m = rng.random(fvw.total_controls)
     u = rng.random(fvw.dim)
     ur, dur_dq, dur_dm = fvw.disc_velocity(q,m,with_tangent=True)
     print(ur.shape, dur_dq.shape, dur_dm.shape)
@@ -184,6 +184,40 @@ def test_initialise_states():
         X,G,U,M = fvw.initialise_states()
         q = fvw.state_vector_from_states(X,G,U,M)
 
+def test_velocity():
+    rng = np.random.default_rng()
+    for dim in [2,3]:
+        number_of_points = rng.integers(1,20)
+        p = rng.standard_normal((number_of_points,dim))
+        config, config_name = generate_random_config(dim)
+        fvw = vw.VortexWake(config_name)
+        q = rng.random(fvw.num_states)
+        m = rng.random(fvw.total_controls)
+        u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
+        u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
+        test.assert_equals(u_no_tangent, u)
+
+
+
+
+def test_class_vortexwake3d():
+    config, config_name = generate_random_config(3)
+    fvw = vw.VortexWake3D(config_name)
+
+class TestVortexWake3D(unittest.TestCase):
+
+    def test_class_vortexwake3d(self):
+        config, config_name = generate_random_config(3)
+        fvw = vw.VortexWake3D(config_name)
+        self.assertRaises(ValueError, vw.VortexWake2D, config_name)
+
+
+class TestVortexWake2D(unittest.TestCase):
+
+    def test_class_vortexwake2d(self):
+        config, config_name = generate_random_config(2)
+        fvw = vw.VortexWake2D(config_name)
+        self.assertRaises(ValueError, vw.VortexWake3D, config_name)
 
 #todo: generalise set up
 #todo: test magnitude of vortex strength

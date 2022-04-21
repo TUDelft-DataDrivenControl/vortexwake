@@ -7,13 +7,15 @@ class VortexWake:
     2D or 3D, with discrete adjoint for gradients.
 
     """
+
     def __init__(self, config_file):
         with open(config_file, "r") as cf:
             config = json.load(cf)
-
-            self.dim = config["dimension"]
+            if config["dimension"] != self.dim:
+                raise ValueError("Trying to instantiate 2D FVW with 3D configuration")
+            # self.dim = config["dimension"]
             self.num_elements = config.get("num_elements", 1)
-            if self.dim==2:
+            if self.dim == 2:
                 self.num_elements = 1
 
             self.num_rings = config["num_rings"]
@@ -60,6 +62,7 @@ class VortexWake:
             if self.dim == 2:
                 self.rot_z = rot_z_2d
                 self.drot_z_dpsi = drot_z_dpsi_2d
+                # self.vel
             elif self.dim == 3:
                 self.rot_z = rot_z_3d
                 self.drot_z_dpsi = drot_z_dpsi_3d
@@ -106,13 +109,14 @@ class VortexWake:
 
         :return: states
         """
-        X,G,U,M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
-        (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros(self.num_states), np.zeros(self.total_controls), self.unit_vector_x)
+        X, G, U, M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
+        (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros(self.num_states), np.zeros(self.total_controls),
+                                                       self.unit_vector_x)
         X[::self.num_rings] = X0
         G[::self.num_rings] = G0
         U[::self.num_rings] = U0
         M[:] = M0
-        return X,G,U,M
+        return X, G, U, M
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
         """Generate values for new rings to initialised.
@@ -190,6 +194,8 @@ class VortexWake:
         return ur, dur_dq, dur_dm
 
     # todo:
+
+    # todo:
     # def update_state(self, q):
     # def update_state_with_tangent(self, q):
     # def run_forward(self):
@@ -205,6 +211,22 @@ class VortexWake:
 # todo:
 # def evaluate_cost_function(
 # construct_gradient
+
+
+class VortexWake2D(VortexWake):
+    def __init__(self, config_file):
+        self.dim = 2
+        VortexWake.__init__(self, config_file)
+
+
+class VortexWake3D(VortexWake):
+    def __init__(self, config_file):
+        self.dim = 3
+        VortexWake.__init__(self, config_file)
+
+        # if self.dimension == 2:
+        #     raise ValueError("Trying to instantiate 3D FVW with 2D configuration")
+
 
 def rot_z_2d(psi):
     """2D rotation matrix, clockwise positive around z-axis
