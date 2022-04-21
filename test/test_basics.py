@@ -22,6 +22,7 @@ def generate_random_config(dim=3):
     config["num_elements"] = rng.integers(3, 50)
     config["num_turbines"] = rng.integers(1, 5)
     config["turbine_positions"] = rng.random((config["num_turbines"], config["dimension"]))
+    config["vortex_core_size"] = rng.random()
     config_name = "rng_config_{:d}d.json".format(dim)
     with open(config_name, "w") as f:
         json.dump(config, f, default=np_encoder, separators=(", ", ': '), indent=4)
@@ -81,16 +82,18 @@ def test_rotation_2d():
 class TestVortexWake(unittest.TestCase):
 
     def setUp(self):
-        self.skipTest("Testing delegated to 2D and 3D subclasses.")
+        self.skipTest("Testing delegated to subclasses")
         self.rng = None  # np.random.default_rng()
         self.fvw = None
         self.dimension = None
+        self.config = None
 
     def test_config(self):
         test.assert_equal(self.fvw.dim, self.config["dimension"])
         test.assert_equal(self.fvw.time_step, self.config["time_step"])
         test.assert_equal(self.fvw.num_rings, self.config["num_rings"])
         test.assert_equal(self.fvw.num_turbines, self.config["num_turbines"])
+        test.assert_equal(self.fvw.vortex_core_size, self.config["vortex_core_size"])
 
     def test_state_vector_conversions(self):
         q = self.rng.random((self.fvw.num_states, 1))
@@ -131,28 +134,24 @@ class TestVortexWake(unittest.TestCase):
         for a, b in zip(new_ring_states, new_ring_states_no_tangent):
             test.assert_allclose(a, b)
 
-# def test_disc_velocity():
-#     rng = np.random.default_rng()
-#     fvw = vw.VortexWake("../config/base_3d.json")
-#     q = rng.random(fvw.num_states)
-#     m = rng.random(fvw.total_controls)
-#     u = rng.random(fvw.dim)
-#     ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
-#     print(ur.shape, dur_dq.shape, dur_dm.shape)
-#
-#
-# def test_velocity():
-#     rng = np.random.default_rng()
-#     for dim in [2, 3]:
-#         number_of_points = rng.integers(1, 20)
-#         p = rng.standard_normal((number_of_points, dim))
-#         config, config_name = generate_random_config(dim)
-#         fvw = vw.VortexWake(config_name)
-#         q = rng.random(fvw.num_states)
-#         m = rng.random(fvw.total_controls)
-#         u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
-#         u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
-#         test.assert_equals(u_no_tangent, u)
+    # def test_disc_velocity():
+    #     rng = np.random.default_rng()
+    #     fvw = vw.VortexWake("../config/base_3d.json")
+    #     q = rng.random(fvw.num_states)
+    #     m = rng.random(fvw.total_controls)
+    #     u = rng.random(fvw.dim)
+    #     ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
+    #     print(ur.shape, dur_dq.shape, dur_dm.shape)
+    #
+    #
+    def test_velocity(self):
+        number_of_points = self.rng.integers(1, 20)
+        p =self.rng.standard_normal((number_of_points, self.dimension))
+        q = self.random_state_vector()
+        m = self.random_control_vector()
+        u_no_tangent, du_dq, du_dm = self.fvw.velocity(q, m, p, with_tangent=False)
+        u, du_dq, du_dm = self.fvw.velocity(q, m, p, with_tangent=True)
+        test.assert_almost_equal(u_no_tangent, u)
 
 
 class TestVortexWake3D(TestVortexWake):
@@ -196,7 +195,6 @@ class TestVortexWake2D(TestVortexWake):
             test.assert_almost_equal(np.linalg.norm(X0[wt, 0] - X0[wt, 1]), 1)  # unit diameter
             test.assert_almost_equal(X0[wt, 0] + X0[wt, 1] - 2 * self.fvw.turbine_positions[wt],
                                      np.zeros(2))  # opposing points and position
-
 
     def test_config_2d(self):
         test.assert_equal(self.fvw.num_elements, 1)
