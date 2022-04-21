@@ -30,6 +30,8 @@ data
 log
 jit*
 docs/build/*
+.ipynb_checkpoints
+*.ipynb
 
 
 *.sublime-project
