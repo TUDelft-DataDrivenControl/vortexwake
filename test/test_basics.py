@@ -84,6 +84,7 @@ class TestVortexWake(unittest.TestCase):
     def setUp(self):
         self.skipTest("Testing delegated to subclasses")
         self.rng = None  # np.random.default_rng()
+        self.vw = None
         self.fvw = None
         self.dimension = None
         self.config = None
@@ -120,15 +121,16 @@ class TestVortexWake(unittest.TestCase):
         return self.rng.random(self.dimension)
 
     def test_new_rings(self):
-        q = self.random_state_vector()
-        m = self.random_control_vector()
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q = self.rng.random((fvw.num_states, 1))
+        m = self.rng.random(fvw.total_controls)
         u = self.random_inflow_vector()
 
-        new_ring_states_no_tangent, new_ring_derivatives = self.fvw.new_rings(q, m, u, with_tangent=False)
+        new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
         X0, G0, U0, M0 = new_ring_states_no_tangent
         (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
 
-        new_ring_states, new_ring_derivatives = self.fvw.new_rings(q, m, u, with_tangent=True)
+        new_ring_states, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=True)
         X0, G0, U0, M0 = new_ring_states
         (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
         for a, b in zip(new_ring_states, new_ring_states_no_tangent):
@@ -145,13 +147,22 @@ class TestVortexWake(unittest.TestCase):
     #
     #
     def test_velocity(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
         number_of_points = self.rng.integers(1, 20)
         p =self.rng.standard_normal((number_of_points, self.dimension))
         q = self.random_state_vector()
         m = self.random_control_vector()
-        u_no_tangent, du_dq, du_dm = self.fvw.velocity(q, m, p, with_tangent=False)
-        u, du_dq, du_dm = self.fvw.velocity(q, m, p, with_tangent=True)
+        u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
+        u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
         test.assert_almost_equal(u_no_tangent, u)
+
+    def test_disc_velocity(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q = self.random_state_vector()
+        m = self.random_control_vector()
+        ur_no_tangent, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=False)
+        ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
+        test.assert_almost_equal(ur_no_tangent, ur)
 
 
 class TestVortexWake3D(TestVortexWake):
@@ -177,6 +188,7 @@ class TestVortexWake2D(TestVortexWake):
     def setUp(self):
         self.rng = np.random.default_rng()
         self.config, config_name = generate_random_config(2)
+        self.vw = vw.VortexWake2D
         self.fvw = vw.VortexWake2D(config_name)
         self.dimension = 2
 
@@ -199,6 +211,16 @@ class TestVortexWake2D(TestVortexWake):
     def test_config_2d(self):
         test.assert_equal(self.fvw.num_elements, 1)
 
+    @unittest.skip("not implemented yet")
+    def test_disc_velocity(self):
+        super().test_disc_velocity()
+
+    @unittest.skip("not implemented yet")
+    def test_velocity(self):
+        super().test_velocity()
+
 # todo: generalise set up
 # todo: test magnitude of vortex strength
 # todo: robust derivative testing?
+if __name__ == '__main__':
+    unittest.main()

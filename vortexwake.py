@@ -210,6 +210,10 @@ class VortexWake2D(VortexWake):
         azimuthal_angles = np.array([0, np.pi])
         self.y0 = self.radius * np.cos(azimuthal_angles)
 
+    # todo: def velocity()
+
+    # todo:
+
 
 class VortexWake3D(VortexWake):
     def __init__(self, config_file):
@@ -222,6 +226,36 @@ class VortexWake3D(VortexWake):
         azimuthal_angles = np.arange(0., self.num_points) * (2 * np.pi) / self.num_elements
         self.y0 = self.radius * np.cos(azimuthal_angles)
         self.z0 = self.radius * np.sin(azimuthal_angles)
+
+        # define points and weights for rotor averaged velocity
+        theta = np.arange(0, 2 * np.pi, np.pi / 3)
+        r = np.linspace(0.05, 0.45, 3)
+        p = np.zeros((len(r) * len(theta), 3))
+        w = np.zeros((len(r) * len(theta), 1))
+        for idx in range(len(r)):
+            p[idx * len(theta):(idx + 1) * len(theta), 1] = r[idx] * np.cos(theta)
+            p[idx * len(theta):(idx + 1) * len(theta), 2] = r[idx] * np.sin(theta)
+            w[idx * len(theta):(idx + 1) * len(theta)] = r[idx] * (np.pi / 6) * (r[1] - r[0])
+        self.rotor_disc_points = p
+        self.rotor_disc_weights = w
+        self.rotor_disc_weights_tiled = (w @ np.eye(self.dim)[:, None, :]).reshape(self.dim, self.dim * len(w))
+
+    def disc_velocity(self, states, controls, with_tangent):
+        pt = np.zeros((self.num_turbines,) + self.rotor_disc_points.shape)
+        ur = np.zeros((self.num_turbines, self.dim))
+        dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
+        dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
+        for wt in range(self.num_turbines):
+            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls]
+            pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
+            u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
+            ur[wt] = np.sum(u * self.rotor_disc_weights, axis=0) / np.sum(self.rotor_disc_weights)
+
+            if with_tangent:
+                dur_dq[wt] = np.sum(self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
+            # print(du_dq.shape)
+
+        return ur, dur_dq, dur_dm
 
     def velocity(self, states, controls, points, with_tangent):
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(
@@ -346,7 +380,7 @@ class VortexWake3D(VortexWake):
         n_p = p.shape[0]
         du_dq = np.zeros((n_p * 3, self.num_states))
         if with_tangent:
-              ## select subset of full jacobian
+            ## select subset of full jacobian
             du_dX = du_dq[:, self.X_index_start:self.X_index_end]
             du_dGamma = du_dq[:, self.G_index_start:self.G_index_end]
             # du_dsigma = du_dq[:, P + E:P + 2 * E]
