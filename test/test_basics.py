@@ -139,6 +139,8 @@ def test_new_rings_3d():
     for a,b in zip(new_ring_states, new_ring_states_no_tangent):
         test.assert_allclose(a,b)
 
+    #todo: test actual position of points
+
 def test_new_rings_2d():
     rng = np.random.default_rng()
     fvw = vw.VortexWake("../config/base_2d.json")
@@ -155,6 +157,10 @@ def test_new_rings_2d():
     (dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
     for a, b in zip(new_ring_states, new_ring_states_no_tangent):
         test.assert_allclose(a, b)
+
+    for wt in range(fvw.num_turbines):
+        test.assert_almost_equal(np.linalg.norm(X0[wt,0]-X0[wt,1]),1) # unit diameter
+        test.assert_almost_equal(X0[wt,0]+X0[wt,1] - 2*fvw.turbine_positions[wt], np.zeros(2)) # opposing points and position
 
 
 def test_disc_velocity():

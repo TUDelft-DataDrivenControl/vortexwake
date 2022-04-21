@@ -36,8 +36,12 @@ class VortexWake:
             self.M_index_start = self.U_index_end
             self.M_index_end = self.M_index_start + self.num_controls * self.num_turbines
 
-            azimuthal_angles = np.arange(0., self.num_points) * (2 * np.pi) / self.num_elements
             radius = 0.5
+            if self.dim == 2:
+                azimuthal_angles = np.array([0, np.pi])
+            elif self.dim == 3:
+                azimuthal_angles = np.arange(0., self.num_points) * (2 * np.pi) / self.num_elements
+
             self.y0 = radius * np.cos(azimuthal_angles)
             self.z0 = radius * np.sin(azimuthal_angles)
 
