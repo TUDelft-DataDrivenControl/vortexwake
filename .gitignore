@@ -33,6 +33,7 @@ docs/build/*
 .ipynb_checkpoints
 *.ipynb
 
+test/*.json
 
 *.sublime-project
 *.sublime-workspace
