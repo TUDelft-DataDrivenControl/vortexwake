@@ -4,7 +4,6 @@ import json
 
 class VortexWake:
 
-
     def __init__(self, config_file):
         with open(config_file, "r") as cf:
             config = json.load(cf)
@@ -17,7 +16,7 @@ class VortexWake:
             self.num_controls = 2
             self.num_turbines = config.get("num_turbines", 1)
 
-            self.turbine_positions = np.array(config.get("turbine_positions",[[0.,0.,0.]]))
+            self.turbine_positions = np.array(config.get("turbine_positions", [[0., 0., 0.]]))
 
             self.total_rings = self.num_rings * self.num_turbines
             self.total_points = self.num_points * self.total_rings
@@ -37,11 +36,15 @@ class VortexWake:
             self.M_index_start = self.U_index_end
             self.M_index_end = self.M_index_start + self.num_controls * self.num_turbines
 
-            azimuthal_angles = np.arange(0., self.num_points) * (2*np.pi)/self.num_elements
+            azimuthal_angles = np.arange(0., self.num_points) * (2 * np.pi) / self.num_elements
             radius = 0.5
             self.y0 = radius * np.cos(azimuthal_angles)
             self.z0 = radius * np.sin(azimuthal_angles)
 
+            # structure of control vector
+            # todo: check number of controls
+            self.induction_idx = 0
+            self.yaw_idx = 1
 
     def states_from_state_vector(self, q):
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
@@ -66,6 +69,7 @@ class VortexWake:
 
         q[self.M_index_start:self.M_index_end, 0] = M.ravel()
         return q
+
     # todo:
     # def initialise_states(self):
     # def new_rings(self):
@@ -86,45 +90,54 @@ class VortexWake:
         dU0_dq = None
         dU0_dm = None
 
-        #todo: generalise for flexibility
+        dM0_dq = None
+        dM0_dm = np.eye(self.total_controls)
+
+        # todo: generalise for flexibility
         a = controls[self.induction_idx::self.num_controls]
         psi = controls[self.yaw_idx::self.num_controls]
+        h = self.time_step
 
-        X0[:,:,1] = self.y0
+        X0[:, :, 1] = self.y0
         if self.dim == 3:
-            X0[:,:,2] = self.z0
+            X0[:, :, 2] = self.z0
 
-        M0[:,0] = controls
+        M0[:, 0] = controls
+
+        ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
 
         for wt in range(self.num_turbines):
-            X0[wt,:] = X0[wt,:] @ rot_z(np.deg2rad(psi[wt])).T
+            X0[wt, :] = X0[wt, :] @ rot_z(np.deg2rad(psi[wt])).T
             X0[wt] += self.turbine_positions[wt]
 
-            thrust_coefficient = 4 * a[wt] / (1-a[wt])
-            n = np.array([1,0,0]) @ rot_z(np.deg2rad(psi[wt])).T
+            thrust_coefficient = 4 * a[wt] / (1 - a[wt])
+            n = np.array([1, 0, 0]) @ rot_z(np.deg2rad(psi[wt])).T
 
-            ur, dur_dq = disc_velocity()
-
-
-            #todo: move deg2rad conversion to rotation matrix
-            G0 = self.time_step * thrust_coefficient * (1/2) * (ur[wt].T @ n)**2
+            # todo: move deg2rad conversion to rotation matrix
+            G0 = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
             U0[:] = inflow
 
             if with_tangent:
                 dn_dpsi = np.array([1, 0, 0]) @ np.deg2rad(drot_z_dpsi(np.deg2rad(psi[wt]))).T
 
-                dX0_dm[wt,:, self.yaw_idx+self.num_controls] = np.reshape(np.dot(X0[wt, :], np.deg2rad(drot_z_dpsi(np.deg2rad(psi[wt])).T)),
-                                                 (self.num_points * 3,))
+                dX0_dm[wt, :, self.yaw_idx + self.num_controls] = np.reshape(
+                    X0[wt, :] @ np.deg2rad(drot_z_dpsi(np.deg2rad(psi[wt])).T),
+                    (self.num_points * 3,))
 
-                dG0_dur = self.time_step * thrust_coefficient * (ur[wt].T @ n)
+                dG0_dur = h * thrust_coefficient * (ur[wt].T @ n)
                 dG0_dq[wt] = dG0_dur @ dur_dq[wt]
 
+                dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * (4 / (1 - a[wt]) ** 2)
+                dG0_dpsi = h * thrust_coefficient * (ur[wt].T @ n) * (
+                        ur[wt].T @ dn_dpsi + n.T @ dur_dm[wt][:, self.yaw_idx + self.num_controls * wt])
+                dG0_dm[wt, self.induction_idx + self.num_controls * wt] = dG0_da
+                dG0_dm[wt, self.yaw_idx + self.num_controls * wt] = dG0_dpsi
 
-        # if with_tangent:
-        #     do tangent stuff
+        return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
-
+    def disc_velocity(self, states, controls, with_tangent):
+        raise NotImplementedError
 
     # todo:
     # def update_state(self, q):
