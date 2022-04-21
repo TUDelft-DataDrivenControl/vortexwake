@@ -82,7 +82,7 @@ class VortexWake:
         M0 = np.zeros((self.num_controls, 1))
 
         dX0_dq = None
-        dX0_dm = np.zeros(X0.shape + (self.total_controls,))
+        dX0_dm = np.zeros((self.num_turbines, self.dim*self.num_points,self.total_controls))
 
         dG0_dq = np.zeros((self.num_turbines, self.num_states))
         dG0_dm = np.zeros((self.num_turbines, self.total_controls))
@@ -120,11 +120,11 @@ class VortexWake:
             if with_tangent:
                 dn_dpsi = np.array([1, 0, 0]) @ drot_z_dpsi(psi[wt]).T
 
-                dX0_dm[wt, :, self.yaw_idx + self.num_controls] = np.reshape(
+                dX0_dm[wt, :, self.yaw_idx + self.num_controls * wt] = np.reshape(
                     X0[wt, :] @ drot_z_dpsi(psi[wt]).T,
-                    (self.num_points * 3,))
+                    (self.num_points * self.dim,))
 
-                dG0_dur = h * thrust_coefficient * (ur[wt].T @ n)
+                dG0_dur = h * thrust_coefficient * n * (ur[wt].T @ n)
                 dG0_dq[wt] = dG0_dur @ dur_dq[wt]
 
                 dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * (4 / (1 - a[wt]) ** 2)
@@ -136,7 +136,11 @@ class VortexWake:
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
     def disc_velocity(self, states, controls, with_tangent):
-        raise NotImplementedError
+        Warning("disc velocity not implemented yet")
+        ur = np.zeros((self.num_turbines, self.dim))
+        dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
+        dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
+        return ur, dur_dq, dur_dm
 
     # todo:
     # def update_state(self, q):

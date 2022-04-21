@@ -115,3 +115,35 @@ def test_rotation_derivative():
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(10):
         test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi(theta).T, np.zeros(3))
+
+
+def test_new_rings_3d():
+    rng = np.random.default_rng()
+    fvw = vw.VortexWake("../config/base_3d.json")
+    q = rng.random(fvw.num_states)
+    m = rng.random(fvw.num_controls)
+    u = rng.random(fvw.dim)
+    new_ring_states_no_tangent, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
+    X0, G0, U0, M0 = new_ring_states_no_tangent
+    (dX0_dq,dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+
+    fvw.new_rings(q, m, u, with_tangent=True)
+    new_ring_states, new_ring_derivatives = fvw.new_rings(q, m, u, with_tangent=False)
+    X0, G0, U0, M0 = new_ring_states
+    (dX0_dq,dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_ring_derivatives
+    for a,b in zip(new_ring_states, new_ring_states_no_tangent):
+        test.assert_allclose(a,b)
+
+
+def test_disc_velocity():
+    rng = np.random.default_rng()
+    fvw = vw.VortexWake("../config/base_3d.json")
+    q = rng.random(fvw.num_states)
+    m = rng.random(fvw.num_controls)
+    u = rng.random(fvw.dim)
+    ur, dur_dq, dur_dm = fvw.disc_velocity(q,m,with_tangent=True)
+    print(ur.shape, dur_dq.shape, dur_dm.shape)
+
+#todo: generalise set up
+#todo: test magnitude of vortex strength
+#todo: robust derivative testing?
