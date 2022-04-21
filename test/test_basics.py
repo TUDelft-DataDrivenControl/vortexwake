@@ -211,7 +211,7 @@ class TestVortexWake2D(TestVortexWake):
     def test_config_2d(self):
         test.assert_equal(self.fvw.num_elements, 1)
 
-    @unittest.skip("not implemented yet")
+    # @unittest.skip("not implemented yet")
     def test_disc_velocity(self):
         super().test_disc_velocity()
 
