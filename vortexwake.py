@@ -102,27 +102,26 @@ class VortexWake:
         if self.dim == 3:
             X0[:, :, 2] = self.z0
 
+        U0[:] = inflow
+
         M0[:, 0] = controls
 
         ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
-
         for wt in range(self.num_turbines):
-            X0[wt, :] = X0[wt, :] @ rot_z(np.deg2rad(psi[wt])).T
+            X0[wt, :] = X0[wt, :] @ rot_z(psi[wt]).T
             X0[wt] += self.turbine_positions[wt]
 
             thrust_coefficient = 4 * a[wt] / (1 - a[wt])
-            n = np.array([1, 0, 0]) @ rot_z(np.deg2rad(psi[wt])).T
+            n = np.array([1, 0, 0]) @ rot_z(psi[wt]).T
 
             # todo: move deg2rad conversion to rotation matrix
             G0 = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
-            U0[:] = inflow
-
             if with_tangent:
-                dn_dpsi = np.array([1, 0, 0]) @ np.deg2rad(drot_z_dpsi(np.deg2rad(psi[wt]))).T
+                dn_dpsi = np.array([1, 0, 0]) @ drot_z_dpsi(psi[wt]).T
 
                 dX0_dm[wt, :, self.yaw_idx + self.num_controls] = np.reshape(
-                    X0[wt, :] @ np.deg2rad(drot_z_dpsi(np.deg2rad(psi[wt])).T),
+                    X0[wt, :] @ drot_z_dpsi(psi[wt]).T,
                     (self.num_points * 3,))
 
                 dG0_dur = h * thrust_coefficient * (ur[wt].T @ n)
@@ -160,9 +159,10 @@ class VortexWake:
 def rot_z(psi):
     """3D rotation matrix, clockwise positive around z-axis
 
-    :param psi: rotation angle (radians)
+    :param psi: rotation angle (degrees)
     :returns: 3x3 rotation matrix
     """
+    psi = np.deg2rad(psi)
     R = np.array([[np.cos(psi), np.sin(psi), 0.],
                   [-np.sin(psi), np.cos(psi), 0.],
                   [0., 0., 1.]])
@@ -172,11 +172,12 @@ def rot_z(psi):
 def drot_z_dpsi(psi):
     """Derivative to angle of 3D rotation matrix, clockwise positive around z-axis
 
-    :param psi: rotation angle (radians)
+    :param psi: rotation angle (degrees)
 
-    :returns: 3x3 rotation matrix derivative
+    :returns: 3x3 rotation matrix derivative (degrees$^{-1}$)
     """
+    psi = np.deg2rad(psi)
     dR_dpsi = np.array([[-np.sin(psi), np.cos(psi), 0],
                         [-np.cos(psi), -np.sin(psi), 0],
                         [0, 0, 0.]])
-    return dR_dpsi
+    return np.deg2rad(dR_dpsi)

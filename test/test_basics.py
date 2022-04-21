@@ -80,20 +80,20 @@ def test_rotation():
     unit_vector_y = np.array([0, 1, 0])
     unit_vector_z = np.array([0, 0, 1])
     theta = 0.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(np.deg2rad(theta)).T, unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_x)
     theta = 360.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(np.deg2rad(theta)).T, unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_x)
     theta = -180.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(np.deg2rad(theta)).T, -unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, -unit_vector_x)
 
     theta = 90.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(np.deg2rad(theta)).T, -unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, -unit_vector_y)
     theta = -90.
-    test.assert_almost_equal(unit_vector_x @ vw.rot_z(np.deg2rad(theta)).T, unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.rot_z(theta).T, unit_vector_y)
 
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(10):
-        test.assert_almost_equal(unit_vector_z @ vw.rot_z(np.deg2rad(theta)).T, unit_vector_z)
+        test.assert_almost_equal(unit_vector_z @ vw.rot_z(theta).T, unit_vector_z)
 
 
 def test_rotation_derivative():
@@ -101,17 +101,17 @@ def test_rotation_derivative():
     unit_vector_y = np.array([0, 1, 0])
     unit_vector_z = np.array([0, 0, 1])
     theta = 0.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(np.deg2rad(theta)).T, -unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_y * (np.pi / 180.))
     theta = 360.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(np.deg2rad(theta)).T, -unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_y * (np.pi / 180.))
     theta = -180.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(np.deg2rad(theta)).T, unit_vector_y)
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, unit_vector_y * (np.pi / 180.))
 
     theta = 90.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(np.deg2rad(theta)).T, -unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, -unit_vector_x * (np.pi / 180.))
     theta = -90.
-    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(np.deg2rad(theta)).T, unit_vector_x)
+    test.assert_almost_equal(unit_vector_x @ vw.drot_z_dpsi(theta).T, unit_vector_x * (np.pi / 180.))
 
     rng = np.random.default_rng()
     for theta in 360 * rng.standard_normal(10):
-        test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi(np.deg2rad(theta)).T,np.zeros(3))
+        test.assert_almost_equal(unit_vector_z @ vw.drot_z_dpsi(theta).T, np.zeros(3))
