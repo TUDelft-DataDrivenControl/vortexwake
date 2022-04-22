@@ -213,6 +213,19 @@ class TestVortexWake(unittest.TestCase):
         test.assert_equal(dp_dq.shape, (fvw.total_turbines, fvw.num_states))
         test.assert_equal(dp_dm.shape, (fvw.total_turbines, fvw.total_controls))
 
+    def test_evaluate_objective_function(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        n = self.rng.integers(10, 30)
+        q = self.rng.random((n, fvw.num_states))
+        # dq_dq = self.rng.random((n, fvw.num_states, fvw.num_states))
+        # dq_dm = self.rng.random((n, fvw.num_states, fvw.num_states))
+        m = self.rng.random((n, fvw.total_controls))
+        Q = self.rng.random((n, 1, fvw.total_turbines))
+        R = self.rng.random((n, fvw.total_controls, fvw.total_controls))
+        phi_no_tangent, dphi_dq, dphi_dm = fvw.evaluate_objective_function(q, m, Q, R, with_tangent=False)
+        phi, dphi_dq, dphi_dm = fvw.evaluate_objective_function(q, m, Q, R, with_tangent=True)
+        test.assert_equal(phi_no_tangent, phi)
+
 
 class TestVortexWake3D(TestVortexWake):
 
@@ -279,6 +292,9 @@ class TestVortexWake2D(TestVortexWake):
     @unittest.skip("not implemented yet")
     def test_calculate_power(self):
         super().test_calculate_power()
+    @unittest.skip("not implemented yet")
+    def test_evaluate_objective_function(self):
+        super().test_evaluate_objective_function()
 
 
 # todo: generalise set up

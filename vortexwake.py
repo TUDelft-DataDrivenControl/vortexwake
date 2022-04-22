@@ -184,7 +184,7 @@ class VortexWake:
         dur_dq = np.zeros((nt, self.dim, self.num_states))
         dur_dm = np.zeros((nt, self.dim, self.total_controls))
         for wt in range(nt):
-            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls, 0]
+            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls].squeeze()
             pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
             u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
             ur[wt] = np.sum(u * self.rotor_disc_weights, axis=0) / np.sum(self.rotor_disc_weights)
@@ -259,6 +259,38 @@ class VortexWake:
 
         return p, dp_dq, dp_dm
 
+    def evaluate_objective_function(self, states, controls, Q, R, with_tangent):
+        """Evaluate objective function for optimisation
+
+        :param states:
+        :param controls:
+        :param Q:
+        :param R:
+        :param with_tangent:
+        :return:
+        """
+        num_steps = states.shape[0]
+
+        # evaluate the change in control value
+        dm = controls - states[:, self.M_index_start:self.M_index_end]
+        ddm_dq = np.zeros((self.total_controls, self.num_states))
+        ddm_dq[:,self.M_index_start: self.M_index_end] = -1*np.eye(self.total_controls)
+        ddm_dm = np.eye(self.total_controls)
+
+        phi = np.zeros(num_steps)
+        dphi_dq = np.zeros((num_steps, 1, self.num_states))
+        dphi_dm = np.zeros((num_steps, 1, self.total_controls))
+
+        for k in range(num_steps):
+            # todo: evaluate power series and evaluate objective without for loop?
+            p, dp_dq, dp_dm = self.calculate_power(states[k], controls[k], with_tangent)
+            phi[k] = Q[k] @ p.T + dm[k].T @ R[k] @ dm[k]
+
+            if with_tangent:
+                dphi_dq[k] = Q[k] @ dp_dq + 2 * dm[k].T @ R[k] @ ddm_dq
+                dphi_dm[k] = Q[k] @ dp_dm + 2 * dm[k].T @ R[k] @ ddm_dm
+
+        return phi, dphi_dq, dphi_dm
 
 # todo:
 # def update_state(self, q):
