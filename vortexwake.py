@@ -59,7 +59,7 @@ class VortexWake:
         :return:
         """
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
-        G = q[self.G_index_start: self.G_index_end].reshape(self.total_elements, 1)
+        G = q[self.G_index_start: self.G_index_end].reshape(self.total_rings, self.num_elements, 1)
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
         M = q[self.M_index_start: self.M_index_end].reshape(self.total_controls, 1)
         return X, G, U, M
@@ -113,7 +113,7 @@ class VortexWake:
         :return: new ring states, new ring state derivatives
         """
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
-        G0 = np.zeros((self.num_turbines, 1))
+        G0 = np.zeros((self.num_turbines,self.num_elements,1))
         U0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         M0 = np.zeros((self.total_controls, 1))
 
@@ -150,8 +150,7 @@ class VortexWake:
             thrust_coefficient = 4 * a[wt] / (1 - a[wt])
             n = self.unit_vector_x @ self.rot_z(psi[wt]).T
 
-            # todo: move deg2rad conversion to rotation matrix
-            G0 = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
+            G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
             if with_tangent:
                 dn_dpsi = self.unit_vector_x @ self.drot_z_dpsi(psi[wt]).T
@@ -168,7 +167,6 @@ class VortexWake:
                         ur[wt].T @ dn_dpsi + n.T @ dur_dm[wt][:, self.yaw_idx + self.num_controls * wt])
                 dG0_dm[wt, self.induction_idx + self.num_controls * wt] = dG0_da
                 dG0_dm[wt, self.yaw_idx + self.num_controls * wt] = dG0_dpsi
-
 
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
@@ -191,7 +189,6 @@ class VortexWake:
 
             if with_tangent:
                 dur_dq[wt] = np.sum(self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
-
         return ur, dur_dq, dur_dm
 
     # todo:
@@ -311,13 +308,13 @@ class VortexWake3D(VortexWake):
         r2y = np.reshape(np.ravel(e2y), (-1, 1)) - py
         r2z = np.reshape(np.ravel(e2z), (-1, 1)) - pz
 
-        r1x = np.where(np.abs(r1x) < 1e-9, 0, r1x)
-        r1y = np.where(np.abs(r1y) < 1e-9, 0, r1y)
-        r1z = np.where(np.abs(r1z) < 1e-9, 0, r1z)
-
-        r2x = np.where(np.abs(r2x) < 1e-9, 0, r2x)
-        r2y = np.where(np.abs(r2y) < 1e-9, 0, r2y)
-        r2z = np.where(np.abs(r2z) < 1e-9, 0, r2z)
+        # r1x = np.where(np.abs(r1x) < 1e-9, 0, r1x)
+        # r1y = np.where(np.abs(r1y) < 1e-9, 0, r1y)
+        # r1z = np.where(np.abs(r1z) < 1e-9, 0, r1z)
+        #
+        # r2x = np.where(np.abs(r2x) < 1e-9, 0, r2x)
+        # r2y = np.where(np.abs(r2y) < 1e-9, 0, r2y)
+        # r2z = np.where(np.abs(r2z) < 1e-9, 0, r2z)
 
         cross_r1_r2_x = r1y * r2z - r1z * r2y
         cross_r1_r2_y = r1z * r2x - r1x * r2z
@@ -752,6 +749,8 @@ class VortexWake3D(VortexWake):
 
     def update_state(self, states, controls, inflow, with_tangent):
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
+        nr_states, nr_derivatives = self.new_rings(states, controls, inflow, with_tangent)
+
         inflow_vector = np.reshape(free_flow, (-1, 3))
         points = elements
 
@@ -872,8 +871,11 @@ class VortexWake3D(VortexWake):
 
         points[1:] = points[:-1] + result[:-1] * self.time_step
         # X0, Gamma0, sigma0, L0 = new_rings(states, controls)
-        nr_states, nr_derivatives = self.new_rings(states, controls, inflow, with_tangent)
+        # print(controls)
+        # nr_states, nr_derivatives = self.new_rings(states, controls, inflow, with_tangent)
+        # print(nr_states[1])
         X0, Gamma0, U0, M0 = nr_states
+
         # todo: include dM0 derivatives
         (dX0_dq, dX0_dm), (dGamma0_dq, dGamma0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = nr_derivatives
         # points[0] = X0
@@ -888,8 +890,8 @@ class VortexWake3D(VortexWake):
         vortex_strengths[0::self.num_rings] = Gamma0
 
         # l update
-        l = r0_norm.copy()
-        l[self.num_elements:] = l[:-self.num_elements]
+        # l = r0_norm.copy()
+        # l[self.num_elements:] = l[:-self.num_elements]
         # l[:self.num_elements] = L0
 
         # sigma update
@@ -1275,7 +1277,6 @@ class VortexWake3D(VortexWake):
             dX_dGamma[3 * self.num_points:, :] = h * dX_dGamma[:-3 * self.num_points, :]
             for idx in range(self.num_turbines):
                 dX_dGamma[idx * P1:idx * P1 + 3 * self.num_points, :] = 0
-                # print(idx)
 
             for wt in range(self.num_turbines):
                 dqn_dq[P + wt * E1:P + wt * E1 + self.num_elements] = dGamma0_dq[wt]

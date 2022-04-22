@@ -171,7 +171,35 @@ class TestVortexWake(unittest.TestCase):
         u = self.random_inflow_vector()
         qk_no_tangent, dqn_dq, dqn_dm = fvw.update_state(q.copy(), m, u, with_tangent=False)
         qk, dqn_dq, dqn_dm = fvw.update_state(q.copy(), m, u, with_tangent=True)
-        test.assert_almost_equal(qk_no_tangent, qk)
+        test.assert_almost_equal(qk_no_tangent, qk)  # this does not always pass.
+        test.assert_equal(dqn_dq.shape, (fvw.num_states, fvw.num_states))
+        test.assert_equal(dqn_dm.shape, (fvw.num_states, fvw.total_controls))
+        test.assert_equal(qk.shape, q.shape)
+
+        # todo: test position update
+        # todo: test new ring introduction in state update
+
+        X, G, U, M = fvw.states_from_state_vector(q)
+        Xk, Gk, Uk, Mk = fvw.states_from_state_vector(qk)
+
+        test.assert_equal(Gk[1:, :], G[:-1, :])
+        test.assert_equal(Uk[1:, :], U[:-1, :])
+        test.assert_equal(Mk[:, 0], m)
+
+    def test_new_rings_in_update_state(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q = self.rng.random((fvw.num_states, 1))
+        m = self.rng.random(fvw.total_controls)
+        u = self.random_inflow_vector()
+        qk, dqn_dq, dqn_dm = fvw.update_state(q.copy(), m, u, with_tangent=False)
+        Xk, Gk, Uk, Mk = fvw.states_from_state_vector(qk)
+
+        (X0, G0, U0, M0), derivatives = fvw.new_rings(q.copy(), m, u, with_tangent=False)
+        for wt in range(fvw.num_turbines):
+            test.assert_equal(Xk[wt * fvw.num_rings], X0[wt])
+            test.assert_equal(Gk[wt * fvw.num_rings], G0[wt])
+            test.assert_equal(Uk[wt * fvw.num_rings], U0[wt])
+            test.assert_equal(Mk[wt * fvw.num_rings], M0[wt])
 
 
 class TestVortexWake3D(TestVortexWake):
@@ -231,6 +259,10 @@ class TestVortexWake2D(TestVortexWake):
     @unittest.skip("not implemented yet")
     def test_update_state(self):
         super().test_update_state()
+
+    @unittest.skip("not implemented yet")
+    def test_new_rings_in_update_state(self):
+        super().test_new_rings_in_update_state()
 
 
 # todo: generalise set up
