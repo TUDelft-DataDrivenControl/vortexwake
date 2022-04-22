@@ -207,11 +207,15 @@ class TestVortexWake(unittest.TestCase):
         m[:, fvw.induction_idx::fvw.num_controls] = 0.5 * self.rng.random((n, fvw.num_turbines))
         m[:, fvw.yaw_idx::fvw.num_controls] = 30. * self.rng.random((n, fvw.num_turbines))
         u = 0.1 * self.rng.standard_normal((n, self.dimension)) + fvw.unit_vector_x
-        state_history, dqn_dq_history, dqn_dm_history = fvw.run_forward(initial_state=q0, control_series=m,
+        state_history_A, dqn_dq_history, dqn_dm_history = fvw.run_forward(initial_state=q0, control_series=m,
                                                                         inflow_series=u, num_steps=n,
                                                                         with_tangent=False)
-
-
+        state_history_B, dqn_dq_history, dqn_dm_history = fvw.run_forward(initial_state=q0, control_series=m,
+                                                                          inflow_series=u, num_steps=n,
+                                                                          with_tangent=True)
+        test.assert_equal(state_history_A[0], q0[:,0])
+        test.assert_equal(state_history_B[0], q0[:,0])
+        test.assert_allclose(state_history_A, state_history_B)
 
 class TestVortexWake3D(TestVortexWake):
 
@@ -281,3 +285,4 @@ class TestVortexWake2D(TestVortexWake):
 # todo: robust derivative testing?
 if __name__ == '__main__':
     unittest.main()
+
