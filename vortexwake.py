@@ -169,6 +169,7 @@ class VortexWake:
                 dG0_dm[wt, self.induction_idx + self.num_controls * wt] = dG0_da
                 dG0_dm[wt, self.yaw_idx + self.num_controls * wt] = dG0_dpsi
 
+
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
     # def disc_velocity(self, states, controls, with_tangent):
@@ -183,7 +184,7 @@ class VortexWake:
         dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
         dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
         for wt in range(self.num_turbines):
-            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls]
+            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls,0]
             pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
             u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
             ur[wt] = np.sum(u * self.rotor_disc_weights, axis=0) / np.sum(self.rotor_disc_weights)
@@ -1330,6 +1331,7 @@ def rot_z_3d(psi):
     :returns: 3x3 rotation matrix
     """
     psi = np.deg2rad(psi)
+    print(psi)
     R = np.array([[np.cos(psi), np.sin(psi), 0.],
                   [-np.sin(psi), np.cos(psi), 0.],
                   [0., 0., 1.]])
