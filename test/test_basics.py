@@ -271,13 +271,14 @@ class TestVortexWake2D(TestVortexWake):
                                      np.zeros(2))  # opposing points and position
 
     def test_config_2d(self):
-        test.assert_equal(self.fvw.num_elements, 1)
+        test.assert_equal(self.fvw.num_elements, 2)
 
     # @unittest.skip("not implemented yet")
     def test_disc_velocity(self):
         super().test_disc_velocity()
 
-    @unittest.skip("not implemented yet")
+
+    #todo: make test fail?
     def test_velocity(self):
         super().test_velocity()
 
@@ -292,6 +293,7 @@ class TestVortexWake2D(TestVortexWake):
     @unittest.skip("not implemented yet")
     def test_calculate_power(self):
         super().test_calculate_power()
+
     @unittest.skip("not implemented yet")
     def test_evaluate_objective_function(self):
         super().test_evaluate_objective_function()
@@ -299,6 +301,10 @@ class TestVortexWake2D(TestVortexWake):
 
 # todo: generalise set up
 # todo: test magnitude of vortex strength
+# todo: perform physical sensibility checks
+    # i.e. velocity in/out of wake
+    # generate power curves
+    #
 # todo: robust derivative testing?
 if __name__ == '__main__':
     unittest.main()

@@ -51,7 +51,9 @@ class TestVortexWakeSlow(unittest.TestCase):
         R = self.rng.random((n+1, fvw.total_controls, fvw.total_controls))
         phi, dphi_dq, dphi_dm = fvw.evaluate_objective_function(states, m, Q, R, with_tangent=True)
         gradient = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
+        # test.assert_equal(gradient.shape, (n+1, fvw.total_controls))
 
+    # todo: verification of partial derivatives and total gradient
 
 class TestVortexWake3DSlow(TestVortexWakeSlow):
 
