@@ -157,7 +157,7 @@ class VortexWake:
             thrust_coefficient = 4 * a[wt] / (1 - a[wt])
             n = self.unit_vector_x @ self.rot_z(psi[wt]).T
             if self.dim==2:
-                G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2 * np.array([[-1],[1]])
+                G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2 * np.array([[1],[-1]])
             elif self.dim==3:
                 G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
