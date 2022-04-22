@@ -272,6 +272,9 @@ class TestVortexWake2D(TestVortexWake):
     def test_new_rings_in_update_state(self):
         super().test_new_rings_in_update_state()
 
+    @unittest.skip("not implemented yet")
+    def test_calculate_power(self):
+        super().test_calculate_power()
 
 # todo: generalise set up
 # todo: test magnitude of vortex strength

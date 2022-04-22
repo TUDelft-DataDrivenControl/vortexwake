@@ -23,6 +23,7 @@ class VortexWake:
             self.num_points = self.num_elements + 1
             self.num_controls = 2
             self.num_turbines = config.get("num_turbines", 1)
+            self.num_virtual_turbines = config.get("num_virtual_turbines", 0)
 
             self.turbine_positions = np.array(config.get("turbine_positions", [[0., 0., 0.]]))
 

@@ -4,6 +4,10 @@
   "num_rings": 35,
   "num_elements": 8,
   "num_turbines": 1,
-  "turbine_positions": [[0,0,0]],
+  "num_virtual_turbines": 1,
+  "turbine_positions": [
+    [0, 0, 0],
+    [5.0, 0, 0]
+  ],
   "vortex_core_size": 0.1
 }
