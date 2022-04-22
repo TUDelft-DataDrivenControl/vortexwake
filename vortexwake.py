@@ -95,7 +95,7 @@ class VortexWake:
         :return: states
         """
         X, G, U, M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
-        (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros(self.num_states), np.zeros(self.total_controls),
+        (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros((self.num_states, 1)), np.zeros(self.total_controls),
                                                        self.unit_vector_x)
         X[::self.num_rings] = X0
         G[::self.num_rings] = G0
@@ -1331,7 +1331,6 @@ def rot_z_3d(psi):
     :returns: 3x3 rotation matrix
     """
     psi = np.deg2rad(psi)
-    print(psi)
     R = np.array([[np.cos(psi), np.sin(psi), 0.],
                   [-np.sin(psi), np.cos(psi), 0.],
                   [0., 0., 1.]])

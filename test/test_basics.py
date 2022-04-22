@@ -158,8 +158,8 @@ class TestVortexWake(unittest.TestCase):
 
     def test_disc_velocity(self):
         fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
-        q = self.random_state_vector()
-        m = self.random_control_vector()
+        q = self.rng.random((fvw.num_states, 1))
+        m = self.rng.random(fvw.total_controls)
         ur_no_tangent, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=False)
         ur, dur_dq, dur_dm = fvw.disc_velocity(q, m, with_tangent=True)
         test.assert_almost_equal(ur_no_tangent, ur)
@@ -169,8 +169,8 @@ class TestVortexWake(unittest.TestCase):
         q = self.rng.random((fvw.num_states, 1))
         m = self.rng.random(fvw.total_controls)
         u = self.random_inflow_vector()
-        qk_no_tangent, dqn_dq, dqn_dm = fvw.update_state(q, m, u, with_tangent=False)
-        qk, dqn_dq, dqn_dm = fvw.update_state(q, m, u, with_tangent=True)
+        qk_no_tangent, dqn_dq, dqn_dm = fvw.update_state(q.copy(), m, u, with_tangent=False)
+        qk, dqn_dq, dqn_dm = fvw.update_state(q.copy(), m, u, with_tangent=True)
         test.assert_almost_equal(qk_no_tangent, qk)
 
 
