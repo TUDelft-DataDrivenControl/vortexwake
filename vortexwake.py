@@ -144,6 +144,7 @@ class VortexWake:
         M0[:, 0] = controls
 
         ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
+        # print(ur)
         for wt in range(self.num_turbines):
             X0[wt, :] = X0[wt, :] @ self.rot_z(psi[wt]).T
             X0[wt] += self.turbine_positions[wt]
@@ -208,11 +209,45 @@ class VortexWake:
                                                                         with_tangent)
             # q, dqn_dq_history[idx], dqn_dm_history[idx] = update_state_with_tangent(q, controls[idx], inflow[idx])
             state_history[k + 1] = q.T
-
             t2 = time()
             print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
 
         return state_history, dqn_dq_history, dqn_dm_history
+
+    def calculate_power(self, states, controls, with_tangent):
+        X, G, U, M = self.states_from_state_vector(states)
+        a = M[self.induction_idx::self.num_controls, 0]
+        psi = M[self.yaw_idx::self.num_controls, 0]
+        ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
+        p = np.zeros(self.num_turbines)
+
+        dp_dq = np.zeros((self.num_turbines, self.num_states))
+        dp_dm = np.zeros((self.num_turbines, self.total_controls))
+
+        dM_dq = np.zeros((self.total_controls, self.num_states))
+        dM_dq[:, self.M_index_start:self.M_index_end] = np.eye(self.total_controls)
+
+        for wt in range(self.num_turbines):
+            n = self.unit_vector_x @ self.rot_z(psi[wt]).T
+
+            # todo: check power coefficient adjustment
+            power_coefficient = (4 * a[wt]) * np.pi * self.radius ** 2
+
+            p[wt] = power_coefficient * (1 / 2) * (ur[wt].T @ n) ** 3
+
+            if with_tangent:
+                dn_dpsi = self.unit_vector_x @ self.drot_z_dpsi(psi[wt]).T
+                dcp_da = (4) * np.pi * self.radius ** 2
+
+                da_dq = dM_dq[self.induction_idx + wt * self.num_controls]
+                dpsi_dq = dM_dq[self.yaw_idx + wt * self.num_controls]
+
+
+                dp_dq[wt] = (1 / 2) * (ur[wt].T @ n) ** 3 * dcp_da * da_dq + \
+                             power_coefficient * (3 / 2) * (ur[wt].T @ n) ** 2 * \
+                             (n @ dur_dq[wt] + (ur[wt].T @ dn_dpsi) * dpsi_dq)
+
+        return p, dp_dq, dp_dm
 
 
 # todo:
@@ -332,13 +367,13 @@ class VortexWake3D(VortexWake):
         r2y = np.reshape(np.ravel(e2y), (-1, 1)) - py
         r2z = np.reshape(np.ravel(e2z), (-1, 1)) - pz
 
-        # r1x = np.where(np.abs(r1x) < 1e-9, 0, r1x)
-        # r1y = np.where(np.abs(r1y) < 1e-9, 0, r1y)
-        # r1z = np.where(np.abs(r1z) < 1e-9, 0, r1z)
-        #
-        # r2x = np.where(np.abs(r2x) < 1e-9, 0, r2x)
-        # r2y = np.where(np.abs(r2y) < 1e-9, 0, r2y)
-        # r2z = np.where(np.abs(r2z) < 1e-9, 0, r2z)
+        r1x = np.where(np.abs(r1x) < 1e-9, 0, r1x)
+        r1y = np.where(np.abs(r1y) < 1e-9, 0, r1y)
+        r1z = np.where(np.abs(r1z) < 1e-9, 0, r1z)
+
+        r2x = np.where(np.abs(r2x) < 1e-9, 0, r2x)
+        r2y = np.where(np.abs(r2y) < 1e-9, 0, r2y)
+        r2z = np.where(np.abs(r2z) < 1e-9, 0, r2z)
 
         cross_r1_r2_x = r1y * r2z - r1z * r2y
         cross_r1_r2_y = r1z * r2x - r1x * r2z

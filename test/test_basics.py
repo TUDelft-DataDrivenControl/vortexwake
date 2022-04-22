@@ -199,6 +199,16 @@ class TestVortexWake(unittest.TestCase):
             test.assert_equal(Uk[wt * fvw.num_rings], U0[wt])
             test.assert_equal(Mk[wt * fvw.num_rings], M0[wt])
 
+    def test_calculate_power(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q = self.rng.random((fvw.num_states, 1))
+        m = self.rng.random(fvw.total_controls)
+        p_no_tangent, dp_dq, dp_dm = fvw.calculate_power(q, m, with_tangent=True)
+        p, dp_dq, dp_dm = fvw.calculate_power(q, m, with_tangent=True)
+        test.assert_almost_equal(p_no_tangent, p)
+        test.assert_equal(p.shape, (fvw.num_turbines,))
+        test.assert_equal(dp_dq.shape, (fvw.num_turbines, fvw.num_states))
+        test.assert_equal(dp_dm.shape, (fvw.num_turbines, fvw.total_controls))
 
 class TestVortexWake3D(TestVortexWake):
 
