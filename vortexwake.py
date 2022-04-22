@@ -1,5 +1,6 @@
 import numpy as np
 import json
+from time import time
 
 
 class VortexWake:
@@ -113,7 +114,7 @@ class VortexWake:
         :return: new ring states, new ring state derivatives
         """
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
-        G0 = np.zeros((self.num_turbines,self.num_elements,1))
+        G0 = np.zeros((self.num_turbines, self.num_elements, 1))
         U0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         M0 = np.zeros((self.total_controls, 1))
 
@@ -182,7 +183,7 @@ class VortexWake:
         dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
         dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
         for wt in range(self.num_turbines):
-            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls,0]
+            psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls, 0]
             pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
             u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
             ur[wt] = np.sum(u * self.rotor_disc_weights, axis=0) / np.sum(self.rotor_disc_weights)
@@ -191,19 +192,40 @@ class VortexWake:
                 dur_dq[wt] = np.sum(self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
         return ur, dur_dq, dur_dm
 
-    # todo:
+    # todo: run_forward
+    def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
+        state_history = np.zeros((num_steps + 1, self.num_states))
+        dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
+        dqn_dm_history = np.zeros((num_steps, self.num_states, self.total_controls))
 
-    # todo:
-    # def update_state(self, q):
-    # def update_state_with_tangent(self, q):
-    # def run_forward(self):
-    # def velocity(self, q, m, pt)
-    # def velocity_tangent(self, q, m, pt)
-    # def disc_velocity(self, q, m)
-    # def disc_velocity_tangent(self, q, m)
-    # def disc_velocity_virtual_tangent(self, q, m, pt, yaw)
-    # def calculate_power()
-    #  def calculate_virtual_power()
+        q = initial_state.copy()
+        state_history[0] = q.T
+        for k in range(0, num_steps):
+            t1 = time()
+            q, dqn_dq_history[k], dqn_dm_history[k] = self.update_state(q,
+                                                                                           control_series[k],
+                                                                                           inflow_series[k],
+                                                                                           with_tangent)
+            # q, dqn_dq_history[idx], dqn_dm_history[idx] = update_state_with_tangent(q, controls[idx], inflow[idx])
+            state_history[k + 1] = q.T
+
+            t2 = time()
+            print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
+
+        return state_history, dqn_dq_history, dqn_dm_history
+
+
+# todo:
+# def update_state(self, q):
+# def update_state_with_tangent(self, q):
+# def run_forward(self):
+# def velocity(self, q, m, pt)
+# def velocity_tangent(self, q, m, pt)
+# def disc_velocity(self, q, m)
+# def disc_velocity_tangent(self, q, m)
+# def disc_velocity_virtual_tangent(self, q, m, pt, yaw)
+# def calculate_power()
+#  def calculate_virtual_power()
 
 
 # todo:
@@ -238,6 +260,8 @@ class VortexWake2D(VortexWake):
         du_dq = np.zeros((self.dim * points.shape[0], self.num_states))
         du_dm = np.zeros((self.dim * points.shape[0], self.num_states))
         return u, du_dq, du_dm
+
+    # todo: update_state
 
 
 class VortexWake3D(VortexWake):
@@ -748,6 +772,7 @@ class VortexWake3D(VortexWake):
         return result, du_dq, du_dm
 
     def update_state(self, states, controls, inflow, with_tangent):
+        states = states.copy()
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
         nr_states, nr_derivatives = self.new_rings(states, controls, inflow, with_tangent)
 

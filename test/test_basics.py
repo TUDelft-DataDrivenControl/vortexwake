@@ -176,9 +176,7 @@ class TestVortexWake(unittest.TestCase):
         test.assert_equal(dqn_dm.shape, (fvw.num_states, fvw.total_controls))
         test.assert_equal(qk.shape, q.shape)
 
-        # todo: test position update
-        # todo: test new ring introduction in state update
-
+        # todo: test position update - how to?
         X, G, U, M = fvw.states_from_state_vector(q)
         Xk, Gk, Uk, Mk = fvw.states_from_state_vector(qk)
 
@@ -200,6 +198,19 @@ class TestVortexWake(unittest.TestCase):
             test.assert_equal(Gk[wt * fvw.num_rings], G0[wt])
             test.assert_equal(Uk[wt * fvw.num_rings], U0[wt])
             test.assert_equal(Mk[wt * fvw.num_rings], M0[wt])
+
+    def test_run_forward(self):
+        fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
+        q0 = self.rng.random((fvw.num_states, 1))
+        n = self.rng.integers(10, 30)
+        m = np.zeros((n, fvw.total_controls))
+        m[:, fvw.induction_idx::fvw.num_controls] = 0.5 * self.rng.random((n, fvw.num_turbines))
+        m[:, fvw.yaw_idx::fvw.num_controls] = 30. * self.rng.random((n, fvw.num_turbines))
+        u = 0.1 * self.rng.standard_normal((n, self.dimension)) + fvw.unit_vector_x
+        state_history, dqn_dq_history, dqn_dm_history = fvw.run_forward(initial_state=q0, control_series=m,
+                                                                        inflow_series=u, num_steps=n,
+                                                                        with_tangent=False)
+
 
 
 class TestVortexWake3D(TestVortexWake):
