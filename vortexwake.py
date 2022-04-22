@@ -119,7 +119,7 @@ class VortexWake:
         :return: new ring states, new ring state derivatives
         """
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
-        G0 = np.zeros((self.num_turbines, self.num_elements, 1))
+        G0 = np.zeros((self.num_turbines, self.num_elements,1))
         U0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         M0 = np.zeros((self.total_controls, 1))
 
@@ -156,8 +156,10 @@ class VortexWake:
 
             thrust_coefficient = 4 * a[wt] / (1 - a[wt])
             n = self.unit_vector_x @ self.rot_z(psi[wt]).T
-
-            G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
+            if self.dim==2:
+                G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2 * np.array([[-1],[1]])
+            elif self.dim==3:
+                G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2
 
             if with_tangent:
                 dn_dpsi = self.unit_vector_x @ self.drot_z_dpsi(psi[wt]).T
@@ -489,7 +491,213 @@ class VortexWake2D(VortexWake):
 
         return result, du_dq, du_dm
 
-    # todo: update_state
+    def update_state(self, states, controls, inflow, with_tangent):
+        states = states.copy()
+        new_states, new_state_derivatives = self.new_rings(states, controls, inflow, with_tangent)
+        elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
+        inflow_vector = np.reshape(free_flow, (-1, 2))
+        points = elements
+
+        ex = np.reshape(elements[:, :, 0], (-1, 1))
+        ey = np.reshape(elements[:, :, 1], (-1, 1))
+        # ez = np.reshape(elements[:, :, 2], (-1, 1))
+
+        p = np.reshape(points, (-1, 2))
+        px = p[:, 0].T
+        py = p[:, 1].T
+        # pz = p[:, 2].T
+
+        rx = ex - px
+        ry = ey - py
+        #     rz = np.reshape(np.ravel(e1z),(-1,1)) - pz
+
+        sigmak = self.vortex_core_size
+        Gammak = np.reshape(np.ravel(vortex_strengths), (-1, 1))
+
+        r_norm_sq = rx ** 2 + ry ** 2
+        r_norm_sq_sq = r_norm_sq ** 2
+
+        u0 = (Gammak / (2 * np.pi * r_norm_sq))
+        u0 = np.where(np.isnan(u0), 0, u0)
+        u0 = np.where(np.isinf(u0), 0, u0)
+        u0x = -ry * u0
+        u0y = rx * u0
+
+        u2 = 1 - np.exp(- r_norm_sq / sigmak ** 2)
+        u2 = np.where(np.isnan(u2), 0, u2)
+        u2 = np.where(np.isinf(u2), 0, u2)
+        ui_x = u0x * u2
+        ui_y = u0y * u2
+        # ui_z = ui_z * p6
+
+        result = np.zeros((self.total_points, 2))
+
+        ui_x = np.where(np.isnan(ui_x), 0, ui_x)
+        ui_y = np.where(np.isnan(ui_y), 0, ui_y)
+        # ui_z = np.where(np.isnan(ui_z), 0, ui_z)
+        #
+        normalised_weights = np.eye(self.total_points)
+        # print(normalised_weights[:,0])
+        inflow_vector_x = (inflow_vector[:, 0:1] * normalised_weights).sum(axis=0)
+        inflow_vector_y = (inflow_vector[:, 1:2] * normalised_weights).sum(axis=0)
+
+        result[:, 0] = ui_x.sum(axis=0) + inflow_vector_x
+        result[:, 1] = ui_y.sum(axis=0) + inflow_vector_y
+        result = np.reshape(result, points.shape)
+
+        points[1:] = points[:-1] + result[:-1] * self.time_step
+
+        (dX0_dq, dX0_dm), (dGamma0_dq, dGamma0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm) = new_state_derivatives
+        (X0, Gamma0, U0, M0) = new_states
+
+        points[0::self.num_rings] = X0
+
+        vortex_strengths[1:] = vortex_strengths[:-1]
+        vortex_strengths[0::self.num_rings] = Gamma0
+
+        free_flow[1:] = free_flow[:-1]
+        free_flow[0::self.num_rings] = U0
+
+        new_controls = M0
+
+        # todo: tangent!
+        P1 = self.num_points * 2 * self.num_rings
+        E1 = self.num_elements * self.num_rings
+        P = self.num_turbines * P1
+        E = self.num_turbines * E1
+
+        dqn_dq = np.zeros((self.num_states, self.num_states))
+        if with_tangent:
+            ## select subset of full jacobian
+            dX_dX = dqn_dq[self.X_index_start:self.X_index_end, self.X_index_start:self.X_index_end]
+            dGamma_dX = dqn_dq[self.G_index_start:self.G_index_end,self.X_index_start:self.X_index_end]
+
+            dX_dGamma = dqn_dq[self.X_index_start:self.X_index_end, self.G_index_start:self.G_index_end]
+            dGamma_dGamma = dqn_dq[self.G_index_start:self.G_index_end, self.G_index_start:self.G_index_end]
+            #     dsigma_dGamma = dqn_dq[P+E:P+2*E,P:P+E]
+            dX_dU = dqn_dq[self.X_index_start:self.X_index_end, self.U_index_start:self.U_index_end]
+            dU_dX = dqn_dq[self.U_index_start:self.U_index_end, self.X_index_start:self.X_index_end]
+            dU_dGamma = dqn_dq[self.U_index_start:self.U_index_end, self.U_index_start:self.U_index_end]
+            dU_dU = dqn_dq[self.U_index_start:self.U_index_end, self.U_index_start:self.U_index_end]
+
+
+            ##   dX_dX
+            pi = np.pi
+            const0 = (-Gammak / (pi * r_norm_sq_sq))
+            du0_dr1_x = const0 * rx
+            du0_dr1_y = const0 * ry
+
+            const2 = (2 / sigmak ** 2) * np.exp(-r_norm_sq / sigmak ** 2)
+            du2_dr1_x = const2 * rx
+            du2_dr1_y = const2 * ry
+
+            u02 = u0 * u2
+            du_x_dr1_x = 0 - ry * (du0_dr1_x * u2 + du2_dr1_x * u0)
+            du_x_dr1_y = -1 * u02 - ry * (du0_dr1_y * u2 + du2_dr1_y * u0)
+
+            du_y_dr1_x = u02 + rx * (du0_dr1_x * u2 + du2_dr1_x * u0)
+            du_y_dr1_y = 0 + rx * (du0_dr1_y * u2 + du2_dr1_y * u0)
+
+            du_x_dx0_x = -du_x_dr1_x
+            du_x_dx0_y = -du_x_dr1_y
+
+            du_y_dx0_x = -du_y_dr1_x
+            du_y_dx0_y = -du_y_dr1_y
+
+            du_x_dx1_x = du_x_dr1_x
+            du_x_dx1_y = du_x_dr1_y
+
+            du_y_dx1_x = du_y_dr1_x
+            du_y_dx1_y = du_y_dr1_y
+
+            du_x_dx1_x = np.where(np.isnan(du_x_dx1_x), 0, du_x_dx1_x)
+            du_x_dx1_y = np.where(np.isnan(du_x_dx1_y), 0, du_x_dx1_y)
+
+            du_y_dx1_x = np.where(np.isnan(du_y_dx1_x), 0, du_y_dx1_x)
+            du_y_dx1_y = np.where(np.isnan(du_y_dx1_y), 0, du_y_dx1_y)
+
+            for idx in range(self.num_rings * self.num_turbines):
+                dX_dX_sub = dX_dX[:, idx * self.num_points * 2:(idx + 1) * self.num_points * 2]
+
+                dX_dX_sub[0::2, 0:-1:2] += du_x_dx1_x[idx * self.num_elements:(idx + 1) *self. num_elements, :].T
+                dX_dX_sub[1::2, 0:-1:2] += du_y_dx1_x[idx * self.num_elements:(idx + 1) * self.num_elements, :].T
+                #
+                dX_dX_sub[0::2, 1::2] += du_x_dx1_y[idx * self.num_elements:(idx + 1) * self.num_elements, :].T
+                dX_dX_sub[1::2, 1::2] += du_y_dx1_y[idx * self.num_elements:(idx + 1) * self.num_elements, :].T
+
+            du_x_dx0_x = np.where(np.isnan(du_x_dx0_x), 0, du_x_dx0_x)
+            du_x_dx0_y = np.where(np.isnan(du_x_dx0_y), 0, du_x_dx0_y)
+
+            du_y_dx0_x = np.where(np.isnan(du_y_dx0_x), 0, du_y_dx0_x)
+            du_y_dx0_y = np.where(np.isnan(du_y_dx0_y), 0, du_y_dx0_y)
+
+            dX_dX[0::2, 0::2] += np.diag(np.sum(du_x_dx0_x, 0))
+            dX_dX[0::2, 1::2] += np.diag(np.sum(du_x_dx0_y, 0))
+
+            dX_dX[1::2, 0::2] += np.diag(np.sum(du_y_dx0_x, 0))
+            dX_dX[1::2, 1::2] += np.diag(np.sum(du_y_dx0_y, 0))
+            #
+            h = self.time_step
+            dX_dX *= h
+            dX_dX += np.eye(P)
+
+            dX_dX[2 * self.num_points:] = dX_dX[:-2 * self.num_points]
+
+            for wt in range(self.num_turbines):
+                dX_dX[wt * P1: wt * P1 + 2 * self.num_points] = 0
+            #
+            # ## dX_dGamma
+            dX_dGamma[0::2, :] = ((-ry / Gammak) * u02).T
+            dX_dGamma[1::2, :] = ((rx / Gammak) * u02).T
+
+            # zero ring does not move, shift dependency down
+            dX_dGamma[2 * self.num_points:, :] = h * dX_dGamma[:-2 * self.num_points, :]
+            for idx in range(self.num_turbines):
+                dX_dGamma[idx * P1:idx * P1 + 2 * self.num_points, :] = 0
+            #
+
+            # ## dX_dM
+            #
+
+            ## dGamma_dX
+            ## dGamma_dGamma
+            dGamma_dGamma[:] = np.diag(np.ones(E - self.num_elements), -self.num_elements)
+            # off-diagonal, zero ring already zero
+            for wt in range(self.num_turbines):
+                dGamma_dGamma[wt * E1:wt * E1 + self.num_elements] = 0
+            ## dGamma_dsigma
+            ## dGamma_dM
+
+
+            ## dM_dX = 0
+            ## dM_dGamma = 0
+            ## dM_dsigma = 0
+            ## dM_dM =0
+
+            # todo
+            ## dX0_dq
+            ## dGamma0_dq
+            for wt in range(self.num_turbines):
+                dqn_dq[P + wt * E1 + 0] = -dGamma0_dq[wt]
+                dqn_dq[P + wt * E1 + 1] = dGamma0_dq[wt]
+
+            dqn_dq = np.where(np.isnan(dqn_dq), 0, dqn_dq)
+        ## dqn_dm
+            # dqn_dm[P + wt * E1 + 1] = dGamma0_dm[wt]
+        dqn_dm = np.zeros((self.num_states, self.total_controls))
+        # for wt in range(num_turbines):
+        #     dqn_dm[P + wt * E1 + 0] = -dGamma0_dm[wt]
+        #     dqn_dm[wt * P1: wt * P1 + 2 * num_points] = dX0_dm[wt]
+
+        dqn_dm[self.M_index_start:self.M_index_end] = dM0_dm
+
+        # for wt in range(num_turbines):
+        #     dqn_dm[P + wt * E1: P + wt * E1 + num_elements] = dGamma0_dm[wt]
+        #     dqn_dm[wt * P1: wt * P1 + 3 * num_points] = dX0_dm[wt]
+        #
+        # dqn_dm[P + 3 * E:P + 3 * E + num_controls] = dM0_dm
+
+        return self.state_vector_from_states(points, vortex_strengths, free_flow, new_controls), dqn_dq, dqn_dm
 
 
 class VortexWake3D(VortexWake):
