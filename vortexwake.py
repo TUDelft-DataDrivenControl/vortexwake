@@ -1,4 +1,7 @@
 import numpy as np
+
+# todo: use 'with' to cover only necessary blocks of code
+np.seterr(divide='ignore', invalid='ignore')
 import json
 from time import time
 
@@ -24,13 +27,14 @@ class VortexWake:
             self.num_controls = 2
             self.num_turbines = config.get("num_turbines", 1)
             self.num_virtual_turbines = config.get("num_virtual_turbines", 0)
+            self.total_turbines = self.num_turbines + self.num_virtual_turbines
 
             self.turbine_positions = np.array(config.get("turbine_positions", [[0., 0., 0.]]))
 
             self.total_rings = self.num_rings * self.num_turbines
             self.total_points = self.num_points * self.total_rings
             self.total_elements = self.num_elements * self.total_rings
-            self.total_controls = self.num_controls * self.num_turbines
+            self.total_controls = self.num_controls * self.total_turbines
             self.num_states = (self.dim * self.total_points * 2) + self.total_elements + self.total_controls
 
             self.time_step = config["time_step"]
@@ -45,7 +49,7 @@ class VortexWake:
             self.U_index_start = self.G_index_end
             self.U_index_end = self.U_index_start + self.dim * self.total_points
             self.M_index_start = self.U_index_end
-            self.M_index_end = self.M_index_start + self.num_controls * self.num_turbines
+            self.M_index_end = self.M_index_start + self.total_controls
 
             self.unit_vector_x = np.zeros(self.dim)
             self.unit_vector_x[0] = 1
@@ -173,18 +177,13 @@ class VortexWake:
 
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
-    # def disc_velocity(self, states, controls, with_tangent):
-    #     Warning("disc velocity not implemented yet")
-    #     ur = np.zeros((self.num_turbines, self.dim))
-    #     dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
-    #     dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
-    #     return ur, dur_dq, dur_dm
-    def disc_velocity(self, states, controls, with_tangent):
-        pt = np.zeros((self.num_turbines,) + self.rotor_disc_points.shape)
-        ur = np.zeros((self.num_turbines, self.dim))
-        dur_dq = np.zeros((self.num_turbines, self.dim, self.num_states))
-        dur_dm = np.zeros((self.num_turbines, self.dim, self.total_controls))
-        for wt in range(self.num_turbines):
+    def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
+        nt = self.total_turbines if all_turbines else self.num_turbines
+        pt = np.zeros((nt,) + self.rotor_disc_points.shape)
+        ur = np.zeros((nt, self.dim))
+        dur_dq = np.zeros((nt, self.dim, self.num_states))
+        dur_dm = np.zeros((nt, self.dim, self.total_controls))
+        for wt in range(nt):
             psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls, 0]
             pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
             u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
@@ -194,7 +193,6 @@ class VortexWake:
                 dur_dq[wt] = np.sum(self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
         return ur, dur_dq, dur_dm
 
-    # todo: run_forward
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
         state_history = np.zeros((num_steps + 1, self.num_states))
         dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
@@ -216,20 +214,32 @@ class VortexWake:
         return state_history, dqn_dq_history, dqn_dm_history
 
     def calculate_power(self, states, controls, with_tangent):
+        """ Calculate power from turbines simulated with free-vortex wake and virtual turbines
+
+        :param states:
+        :param controls:
+        :param with_tangent:
+        :return:
+        """
         X, G, U, M = self.states_from_state_vector(states)
         a = M[self.induction_idx::self.num_controls, 0]
         psi = M[self.yaw_idx::self.num_controls, 0]
-        ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent)
-        p = np.zeros(self.num_turbines)
+        ur, dur_dq, dur_dm = self.disc_velocity(states, controls, with_tangent, all_turbines=True)
+        p = np.zeros(self.total_turbines)
 
-        dp_dq = np.zeros((self.num_turbines, self.num_states))
-        dp_dm = np.zeros((self.num_turbines, self.total_controls))
+        dp_dq = np.zeros((self.total_turbines, self.num_states))
+        dp_dm = np.zeros((self.total_turbines, self.total_controls))
 
         dM_dq = np.zeros((self.total_controls, self.num_states))
         dM_dq[:, self.M_index_start:self.M_index_end] = np.eye(self.total_controls)
 
-        for wt in range(self.num_turbines):
-            n = self.unit_vector_x @ self.rot_z(psi[wt]).T
+        for wt in range(self.total_turbines):
+            if wt >= self.num_turbines:
+                vta = 1 - a[wt]  # adjust rotor velocity for lack of simulated effect of virtual turbine
+            else:
+                vta = 1
+
+            n = (vta * self.unit_vector_x) @ self.rot_z(psi[wt]).T
 
             # todo: check power coefficient adjustment
             power_coefficient = (4 * a[wt]) * np.pi * self.radius ** 2
@@ -237,16 +247,15 @@ class VortexWake:
             p[wt] = power_coefficient * (1 / 2) * (ur[wt].T @ n) ** 3
 
             if with_tangent:
-                dn_dpsi = self.unit_vector_x @ self.drot_z_dpsi(psi[wt]).T
+                dn_dpsi = (vta * self.unit_vector_x) @ self.drot_z_dpsi(psi[wt]).T
                 dcp_da = (4) * np.pi * self.radius ** 2
 
                 da_dq = dM_dq[self.induction_idx + wt * self.num_controls]
                 dpsi_dq = dM_dq[self.yaw_idx + wt * self.num_controls]
 
-
                 dp_dq[wt] = (1 / 2) * (ur[wt].T @ n) ** 3 * dcp_da * da_dq + \
-                             power_coefficient * (3 / 2) * (ur[wt].T @ n) ** 2 * \
-                             (n @ dur_dq[wt] + (ur[wt].T @ dn_dpsi) * dpsi_dq)
+                            power_coefficient * (3 / 2) * (ur[wt].T @ n) ** 2 * \
+                            (n @ dur_dq[wt] + (ur[wt].T @ dn_dpsi) * dpsi_dq)
 
         return p, dp_dq, dp_dm
 

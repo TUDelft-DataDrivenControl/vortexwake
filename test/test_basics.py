@@ -21,7 +21,9 @@ def generate_random_config(dim=3):
     # todo: catch zero turbine definition?
     config["num_elements"] = rng.integers(3, 50)
     config["num_turbines"] = rng.integers(1, 5)
-    config["turbine_positions"] = rng.random((config["num_turbines"], config["dimension"]))
+    config["num_virtual_turbines"] = rng.integers(1, 5)
+    config["turbine_positions"] = rng.random(
+        (config["num_turbines"] + config["num_virtual_turbines"], config["dimension"]))
     config["vortex_core_size"] = rng.random()
     config_name = "rng_config_{:d}d.json".format(dim)
     with open(config_name, "w") as f:
@@ -95,6 +97,7 @@ class TestVortexWake(unittest.TestCase):
         test.assert_equal(self.fvw.num_rings, self.config["num_rings"])
         test.assert_equal(self.fvw.num_turbines, self.config["num_turbines"])
         test.assert_equal(self.fvw.vortex_core_size, self.config["vortex_core_size"])
+        test.assert_equal(self.fvw.total_turbines, self.fvw.num_turbines + self.fvw.num_virtual_turbines)
 
     def test_state_vector_conversions(self):
         q = self.rng.random((self.fvw.num_states, 1))
@@ -206,9 +209,10 @@ class TestVortexWake(unittest.TestCase):
         p_no_tangent, dp_dq, dp_dm = fvw.calculate_power(q, m, with_tangent=True)
         p, dp_dq, dp_dm = fvw.calculate_power(q, m, with_tangent=True)
         test.assert_almost_equal(p_no_tangent, p)
-        test.assert_equal(p.shape, (fvw.num_turbines,))
-        test.assert_equal(dp_dq.shape, (fvw.num_turbines, fvw.num_states))
-        test.assert_equal(dp_dm.shape, (fvw.num_turbines, fvw.total_controls))
+        test.assert_equal(p.shape, (fvw.total_turbines,))
+        test.assert_equal(dp_dq.shape, (fvw.total_turbines, fvw.num_states))
+        test.assert_equal(dp_dm.shape, (fvw.total_turbines, fvw.total_controls))
+
 
 class TestVortexWake3D(TestVortexWake):
 
@@ -275,6 +279,7 @@ class TestVortexWake2D(TestVortexWake):
     @unittest.skip("not implemented yet")
     def test_calculate_power(self):
         super().test_calculate_power()
+
 
 # todo: generalise set up
 # todo: test magnitude of vortex strength
