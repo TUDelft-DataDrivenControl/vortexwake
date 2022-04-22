@@ -274,21 +274,21 @@ class TestVortexWake2D(TestVortexWake):
         test.assert_equal(self.fvw.num_elements, 2)
 
 
-    # @unittest.skip("not implemented yet")
-    def test_update_state(self):
-        super().test_update_state()
-
-    @unittest.skip("not implemented yet")
-    def test_new_rings_in_update_state(self):
-        super().test_new_rings_in_update_state()
-
-    @unittest.skip("not implemented yet")
-    def test_calculate_power(self):
-        super().test_calculate_power()
-
-    @unittest.skip("not implemented yet")
-    def test_evaluate_objective_function(self):
-        super().test_evaluate_objective_function()
+    # # @unittest.skip("not implemented yet")
+    # def test_update_state(self):
+    #     super().test_update_state()
+    #
+    # # @unittest.skip("not implemented yet")
+    # def test_new_rings_in_update_state(self):
+    #     super().test_new_rings_in_update_state()
+    #
+    # # @unittest.skip("not implemented yet")
+    # def test_calculate_power(self):
+    #     super().test_calculate_power()
+    #
+    # # @unittest.skip("not implemented yet")
+    # def test_evaluate_objective_function(self):
+    #     super().test_evaluate_objective_function()
 
 
 # todo: generalise set up
