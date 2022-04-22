@@ -18,7 +18,7 @@ class TestVortexWakeSlow(unittest.TestCase):
     def test_run_forward(self):
         fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
         q0 = self.rng.random((fvw.num_states, 1))
-        n = self.rng.integers(10, 30)
+        n = self.rng.integers(5,10)
         m = np.zeros((n, fvw.total_controls))
         m[:, fvw.induction_idx::fvw.num_controls] = 0.5 * self.rng.random((n, fvw.num_turbines))
         m[:, fvw.yaw_idx::fvw.num_controls] = 30. * self.rng.random((n, fvw.num_turbines))
@@ -32,6 +32,9 @@ class TestVortexWakeSlow(unittest.TestCase):
         test.assert_equal(state_history_A[0], q0[:, 0])
         test.assert_equal(state_history_B[0], q0[:, 0])
         test.assert_allclose(state_history_A, state_history_B)
+        test.assert_equal(state_history_B.shape, (n+1, fvw.num_states))
+        test.assert_equal(dqn_dq_history.shape, (n, fvw.num_states, fvw.num_states))
+        test.assert_equal(dqn_dm_history.shape, (n, fvw.num_states, fvw.total_controls))
 
 
 class TestVortexWake3DSlow(TestVortexWakeSlow):
@@ -54,3 +57,4 @@ class TestVortexWake2DSlow(TestVortexWakeSlow):
         self.vw = vw.VortexWake2D
         # self.fvw = vw.VortexWake3D(config_name)
         self.dimension = 2
+
