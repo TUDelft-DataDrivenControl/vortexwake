@@ -1419,3 +1419,30 @@ def drot_z_dpsi_3d(psi):
                         [-np.cos(psi), -np.sin(psi), 0],
                         [0, 0, 0.]])
     return np.deg2rad(dR_dpsi)
+
+
+def construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm):
+    """ Construct gradient of a cost function through backwards propagation with the discrete adjoint
+
+    :param dqn_dq: [num_steps x num_states x num_states]
+    :param dqn_dm: [num_steps x num_states x num_controls]
+    :param dphi_dq: [num_steps x num_states]
+    :param dphi_dm: [num_steps x num_controls]
+    :return: gradient array
+    """
+    num_steps = dqn_dq.shape[0]
+    num_controls = dqn_dm.shape[-1]
+    num_states = dqn_dq.shape[-1]
+
+    gradient = np.zeros((num_steps, 1, num_controls))
+    lamda_v = np.zeros((num_steps + 1, num_states, 1))
+
+    lamda_v[-1] = dphi_dq[-1].T
+    # gradient[-1] = dphi_dm[-1]
+
+    for idx in range(num_steps, 0, -1):
+        n = idx - 1
+        lamda_v[n] = (dphi_dq[n] + lamda_v[n + 1].T @ dqn_dq[n]).T
+        gradient[n] = dphi_dm[n] + (dqn_dm[n].T @ lamda_v[n + 1]).T
+
+    return np.squeeze(gradient)
