@@ -68,7 +68,7 @@ class TestVortexWake3DSlow(TestVortexWakeSlow):
 class TestVortexWake2DSlow(TestVortexWakeSlow):
 
     def setUp(self):
-        self.skipTest("slow methods not implemented for 2D yet")
+        # self.skipTest("slow methods not implemented for 2D yet")
 
         self.rng = np.random.default_rng()
         # self.config, config_name = generate_random_config(3)
