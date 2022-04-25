@@ -47,10 +47,10 @@ class TestDerivatives(unittest.TestCase):
         self.dimension = None
         self.config = None
 
-    def run_transient(self):
+    def run_transient(self, num_steps=100):
         states = self.fvw.initialise_states()
         q0 = self.fvw.state_vector_from_states(*states)
-        n = 100
+        n = num_steps
         m = np.zeros((n, self.fvw.total_controls))
         m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random((n, self.fvw.num_controls))
         m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n, self.fvw.num_controls))
@@ -141,7 +141,7 @@ class TestDerivatives2D(TestDerivatives):
         self.vw = vw.VortexWake2D
         self.dimension = 2
         self.fvw = self.vw("../config/base_2d.json")
-        self.q0, self.m0 = self.run_transient()
+        self.q0, self.m0 = self.run_transient(200)
 
     def test_velocity(self):
         super().test_velocity()

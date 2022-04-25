@@ -683,7 +683,15 @@ class VortexWake2D(VortexWake):
             ## dGamma_dsigma
             ## dGamma_dM
 
+            ## dX_dU
+            dX_dU[0::2, 0::2] = h * normalised_weights.T
+            dX_dU[1::2, 1::2] = h * normalised_weights.T
 
+            dX_dU[2 * self.num_points:] = dX_dU[:-2 * self.num_points]
+            for wt in range(self.num_turbines):
+                dX_dU[wt*P1:wt*P1+2 * self.num_points] = 0
+
+            dU_dU[:] = np.diag(np.ones(P - 2 * self.num_points), -2 * self.num_points)
             ## dM_dX = 0
             ## dM_dGamma = 0
             ## dM_dsigma = 0
