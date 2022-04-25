@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 
+def mean_absolute_error(A, B):
+    return np.sum(np.abs(A - B)) / (np.product(A.shape))  # / np.sum(np.abs(A))
+
+
 def construct_jacobian_fd(f, q, m, dq=1e-4, dm=1e-4):
     q0 = q.copy()
     m0 = m.copy().ravel()
@@ -71,13 +75,18 @@ class TestDerivatives(unittest.TestCase):
 
         fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
         vmax = 1e-3
-        ax[0].imshow(df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
-        ax[1].imshow(df_dq_A, cmap="RdBu", vmin=-vmax, vmax=vmax)
-        ax[2].imshow(df_dq_A - df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
+        if df_dq_A.shape[0] < 5:
+            ax[0].plot(df_dq_B.T)
+            ax[1].plot(df_dq_A.T)
+            ax[2].plot(df_dq_A.T - df_dq_B.T)
+        else:
+            ax[0].imshow(df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
+            ax[1].imshow(df_dq_A, cmap="RdBu", vmin=-vmax, vmax=vmax)
+            ax[2].imshow(df_dq_A - df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
         ax[0].set_title("analytical")
         ax[1].set_title("central diff")
         ax[2].set_title("difference")
-        fig.savefig("./figures/adj_fd_{:s}_dq_{:d}.png".format(name, self.dimension), format="png", dpi=600)
+        fig.savefig("./figures/{:d}d/adj_fd_{:s}_dq.png".format(self.dimension, name), format="png", dpi=600)
 
         fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
         vmax = 1e-3
@@ -87,7 +96,9 @@ class TestDerivatives(unittest.TestCase):
         ax[0].set_title("analytical")
         ax[1].set_title("central diff")
         ax[2].set_title("difference")
-        fig.savefig("./figures/adj_fd_{:s}_dm_{:d}.png".format(name, self.dimension), format="png", dpi=600)
+        fig.savefig("./figures/{:d}d/adj_fd_{:s}_dm.png".format(self.dimension, name), format="png", dpi=600)
+
+        return (df_dq_A, df_dm_A), (df_dq_B, df_dm_B)
 
     @unittest.skip
     def test_new_rings(self):
@@ -97,7 +108,11 @@ class TestDerivatives(unittest.TestCase):
     def test_disc_velocity(self):
         # def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
         function = partial(self.fvw.disc_velocity, all_turbines=True)
-        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "disc_velocity")
+        (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0, "disc_velocity")
+
+        threshold = 1e-6
+        self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
+        self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
     # @unittest.skip
     def test_velocity(self):
@@ -105,18 +120,40 @@ class TestDerivatives(unittest.TestCase):
         points = self.rng.standard_normal((n, self.dimension))
         points[:, 0] += np.arange(n)
         function = partial(self.fvw.velocity, points=points)
-        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "velocity")
-        # assert False
+        (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0, "velocity")
+
+        threshold = 1e-6
+        self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
+        self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
     def test_power(self):
         function = self.fvw.calculate_power  # (q, m, with_tangent=True)
-        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "power")
+        (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0, "power")
+        threshold = 1e-6
+        self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
+        self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
     # @unittest.skip
     def test_update_state(self):
         # inflow = self.fvw.unit_vector_x
         function = partial(self.fvw.update_state, inflow=self.fvw.unit_vector_x)
-        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "update_state")
+        (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0, "update_state")
+
+        indices = [self.fvw.X_index_start, self.fvw.G_index_start, self.fvw.U_index_start, self.fvw.M_index_start, -1]
+        for row in range(len(indices)-1):
+            ida0 = indices[row]
+            ida1 = indices[row+1]
+            for col in range(len(indices)-1):
+                idb0 = indices[col]
+                idb1 = indices[col+1]
+                if row < 1 and col < 2:
+                    threshold = 1e-3
+                else:
+                    threshold = 1e-6
+                # print(row,col)
+                self.assertLess(mean_absolute_error(df_dq_A[ida0:ida1,idb0:idb1], df_dq_B[ida0:ida1,idb0:idb1]), threshold)
+        threshold = 1e-5
+        self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
     @unittest.skip
     def test_full_gradient(self):
