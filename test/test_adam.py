@@ -1,4 +1,5 @@
 import unittest
+import numpy.testing as test
 from adam import *
 
 class TestAdam(unittest.TestCase):
@@ -37,3 +38,16 @@ class TestAdam(unittest.TestCase):
         self.assertEqual(adam.vt, 0)
         self.assertEqual(adam.t, 0)
         self.assertEqual(adam.f, 0)
+
+    def test_optimisation(self):
+        def f(x,q):
+            return np.sum(x**2), 2*x
+        x0 = self.rng.random(10)
+        q0 = 0
+        y0 = f(x0, q0)[0]
+        adam = Adam()
+        x_opt = adam.minimise(f, x0, q0)
+        y_opt = f(x_opt, q0)[0]
+
+        test.assert_equal(y_opt, 0.)
+        test.assert_array_less(np.abs(x_opt), 1e-10)

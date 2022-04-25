@@ -68,6 +68,7 @@ class Adam:
             # more efficient version??
             #     alphat = alpha * np.sqrt(1-beta_2**t) / (1-beta_1**t)
             #     xt = xt - alphat * mt / (np.sqrt(vt)+eps)
+        return self.xh[np.argmin(self.fh)]
 
     def not_converged(self):
         # todo: implement other convergence criterion
