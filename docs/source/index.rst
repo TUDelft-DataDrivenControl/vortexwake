@@ -13,6 +13,7 @@ Welcome to Vortex Wake's documentation!
    introduction
    examples
    api
+   test
 
 Indices and tables
 ==================
