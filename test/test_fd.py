@@ -108,9 +108,9 @@ class TestDerivatives(unittest.TestCase):
         self.print_graphical_derivative_comparison(function, self.q0, self.m0, "velocity")
         # assert False
 
-    @unittest.skip
     def test_power(self):
-        assert False
+        function = self.fvw.calculate_power  # (q, m, with_tangent=True)
+        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "power")
 
     # @unittest.skip
     def test_update_state(self):
@@ -132,7 +132,7 @@ class TestDerivatives3D(TestDerivatives):
         self.fvw = self.vw("../config/base_3d.json")
         self.q0, self.m0 = self.run_transient()
 
-    @unittest.skip
+    # @unittest.skip
     def test_velocity(self):
         super().test_velocity()
 
@@ -160,3 +160,6 @@ class TestDerivatives2D(TestDerivatives):
 
     def test_update_state(self):
         super().test_update_state()
+
+    def test_power(self):
+        super().test_power()

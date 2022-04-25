@@ -203,7 +203,7 @@ class VortexWake:
                 dpt_dpsi = self.rotor_disc_points @ self.drot_z_dpsi(psi).T
                 dpt_dpsi = dpt_dpsi.reshape(-1, 1)
                 dur_dq[wt, :, self.M_index_start + self.yaw_idx + wt * self.num_controls] += (
-                            self.rotor_disc_weights_tiled @ du_dpt @ dpt_dpsi).squeeze()
+                        self.rotor_disc_weights_tiled @ du_dpt @ dpt_dpsi).squeeze()
         return ur, dur_dq, dur_dm
 
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
@@ -247,28 +247,30 @@ class VortexWake:
         dM_dq[:, self.M_index_start:self.M_index_end] = np.eye(self.total_controls)
 
         for wt in range(self.total_turbines):
-            if wt >= self.num_turbines:
-                vta = 1 - a[wt]  # adjust rotor velocity for lack of simulated effect of virtual turbine
-            else:
-                vta = 1
-
-            n = (vta * self.unit_vector_x) @ self.rot_z(psi[wt]).T
-
+            n = (self.unit_vector_x) @ self.rot_z(psi[wt]).T
             # todo: check power coefficient adjustment
             power_coefficient = (4 * a[wt]) * np.pi * self.radius ** 2
+            if wt >= self.num_turbines:
+                power_coefficient *= (1 - a[wt]) ** 3
 
             p[wt] = power_coefficient * (1 / 2) * (ur[wt].T @ n) ** 3
 
             if with_tangent:
-                dn_dpsi = (vta * self.unit_vector_x) @ self.drot_z_dpsi(psi[wt]).T
-                dcp_da = (4) * np.pi * self.radius ** 2
+                dn_dpsi = (self.unit_vector_x) @ self.drot_z_dpsi(psi[wt]).T
+                dcp_da = 4 * np.pi * self.radius ** 2
+                if wt >= self.num_turbines:
+                    dcp_da = 4 * np.pi * self.radius ** 2 * (1 - a[wt] )** 3 \
+                             - 4 * a[wt] * np.pi * self.radius ** 2 * 3 * (1 - a[wt]) ** 2
+                else:
+                    dcp_da = 4 * np.pi * self.radius ** 2
 
                 da_dq = dM_dq[self.induction_idx + wt * self.num_controls]
                 dpsi_dq = dM_dq[self.yaw_idx + wt * self.num_controls]
 
-                dp_dq[wt] = (1 / 2) * (ur[wt].T @ n) ** 3 * dcp_da * da_dq + \
-                            power_coefficient * (3 / 2) * (ur[wt].T @ n) ** 2 * \
-                            (n @ dur_dq[wt] + (ur[wt].T @ dn_dpsi) * dpsi_dq)
+                dp_dq[wt] = (1 / 2) * (ur[wt].T @ n) ** 3 * dcp_da * da_dq   + \
+                    power_coefficient * (3 / 2) * (ur[wt].T @ n) ** 2 * \
+                    (n @ dur_dq[wt]  + (ur[wt].T @ dn_dpsi) * dpsi_dq)
+
 
         return p, dp_dq, dp_dm
 
@@ -718,9 +720,8 @@ class VortexWake2D(VortexWake):
 
         dqn_dm[self.M_index_start:self.M_index_end] = dM0_dm
 
-        dqn_dm[self.G_index_start:self.G_index_end:2*self.num_rings] = dGamma0_dm
-        dqn_dm[self.G_index_start+1:self.G_index_end:2 * self.num_rings] = dGamma0_dm * -1
-
+        dqn_dm[self.G_index_start:self.G_index_end:2 * self.num_rings] = dGamma0_dm
+        dqn_dm[self.G_index_start + 1:self.G_index_end:2 * self.num_rings] = dGamma0_dm * -1
 
         # for wt in range(num_turbines):
         #     dqn_dm[P + wt * E1: P + wt * E1 + num_elements] = dGamma0_dm[wt]
@@ -1792,7 +1793,7 @@ class VortexWake3D(VortexWake):
             # for wt in range(self.num_turbines):
             #     dGamma_dGamma[wt * P1:wt * P1 + 3 * self.num_points] = 0
 
-            dqn_dq[self.G_index_start:self.G_index_start+self.num_elements]  = dGamma0_dq
+            dqn_dq[self.G_index_start:self.G_index_start + self.num_elements] = dGamma0_dq
             dqn_dq = np.where(np.isnan(dqn_dq), 0, dqn_dq)
 
         dqn_dm = np.zeros((self.num_states, len(controls)))
