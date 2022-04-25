@@ -1768,8 +1768,8 @@ class VortexWake3D(VortexWake):
             ##   dGamma_dGamma
             dGamma_dGamma[:] = np.diag(np.ones(E - self.num_elements), -self.num_elements)
             # off-diagonal, zero ring already zero
-            for wt in range(self.num_turbines):
-                dGamma_dGamma[wt * E1:wt * E1 + self.num_elements] = 0
+            # for wt in range(self.num_turbines):
+            #     dGamma_dGamma[wt * E1:wt * E1 + self.num_elements] = 0
 
             ##   dX_dGamma
             dX_dGamma[0::3, :] = ((1 / Gammak) * u0x * u1 * u2).T
@@ -1789,9 +1789,10 @@ class VortexWake3D(VortexWake):
             ##   ddU_dU
             dU_dU[:] = np.diag(np.ones(P - 3 * self.num_points), -3 * self.num_points)
             # off-diagonal, zero ring already zero
-            for wt in range(self.num_turbines):
-                dGamma_dGamma[wt * P1:wt * P1 + 3 * self.num_points] = 0
+            # for wt in range(self.num_turbines):
+            #     dGamma_dGamma[wt * P1:wt * P1 + 3 * self.num_points] = 0
 
+            dqn_dq[self.G_index_start:self.G_index_start+self.num_elements]  = dGamma0_dq
             dqn_dq = np.where(np.isnan(dqn_dq), 0, dqn_dq)
 
         dqn_dm = np.zeros((self.num_states, len(controls)))
