@@ -185,14 +185,18 @@ class VortexWake:
         ur = np.zeros((nt, self.dim))
         dur_dq = np.zeros((nt, self.dim, self.num_states))
         dur_dm = np.zeros((nt, self.dim, self.total_controls))
+        dur_dp = np.zeros((nt, self.rotor_disc_points.shape[0] * self.dim))
         for wt in range(nt):
             psi = states[self.M_index_start + self.yaw_idx + wt * self.num_controls].squeeze()
             pt[wt] = self.rotor_disc_points @ self.rot_z(psi).T + self.turbine_positions[wt]
-            u, du_dq, du_dm = self.velocity(states, controls, pt[wt], with_tangent)
+            u, du_dq, du_dm, du_dpt = self.velocity(states, controls, pt[wt], with_tangent)
             ur[wt] = np.sum(u * self.rotor_disc_weights, axis=0) / np.sum(self.rotor_disc_weights)
 
             if with_tangent:
-                dur_dq[wt] = np.sum(self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
+                dur_dq[wt] = (self.rotor_disc_weights_tiled @ du_dq) / np.sum(self.rotor_disc_weights)
+                dpt_dpsi = self.rotor_disc_points @ self.drot_z_dpsi(psi).T
+                dpt_dpsi = dpt_dpsi.reshape(-1,1)
+                dur_dq[wt, :,self.M_index_start+self.yaw_idx+wt*self.num_controls] += (self.rotor_disc_weights_tiled @ du_dpt @ dpt_dpsi).squeeze()
         return ur, dur_dq, dur_dm
 
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
@@ -395,6 +399,7 @@ class VortexWake2D(VortexWake):
         # E = num_turbines * E1
         n_p = p.shape[0]
         du_dq = np.zeros((n_p * self.dim, self.num_states))
+        du_dp = np.zeros((n_p * self.dim, n_p * self.dim))
         if with_tangent:
             ## select subset of full jacobian
             du_dX = du_dq[:, self.X_index_start:self.X_index_end]
@@ -490,9 +495,16 @@ class VortexWake2D(VortexWake):
             ##   du_dsigma#
             du_dq = np.where(np.isnan(du_dq), 0, du_dq)
 
+
+            du_dp[0::2, 0::2] = np.diag(np.sum(du_x_dx0_x, axis=0))
+            du_dp[0::2, 1::2] = np.diag(np.sum(du_x_dx0_y, axis=0))
+
+            du_dp[1::2, 0::2] = np.diag(np.sum(du_y_dx0_x, axis=0))
+            du_dp[1::2, 1::2] = np.diag(np.sum(du_y_dx0_y, axis=0))
+
         du_dm = np.zeros((n_p * 2, len(controls)))
 
-        return result, du_dq, du_dm
+        return result, du_dq, du_dm, du_dp
 
     def update_state(self, states, controls, inflow, with_tangent):
         states = states.copy()

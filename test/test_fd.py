@@ -64,7 +64,10 @@ class TestDerivatives(unittest.TestCase):
             return function(q.copy(), m.copy(), with_tangent=False)[0].reshape(-1,1)
 
         df_dq_A, df_dm_A = construct_jacobian_fd(f, state.copy(), controls.copy())
-        df_dq_B, df_dm_B = function(state.copy(), controls.copy(), with_tangent=True)[1:]
+        df_dq_B, df_dm_B = function(state.copy(), controls.copy(), with_tangent=True)[1:3]
+
+        df_dq_B = df_dq_B.reshape(-1,self.fvw.num_states)
+        df_dm_B = df_dm_B.reshape(-1, self.fvw.total_controls)
 
         fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
         vmax = 1e-3
@@ -91,9 +94,11 @@ class TestDerivatives(unittest.TestCase):
     def test_new_rings(self):
         assert False
 
-    @unittest.skip
+    # @unittest.skip
     def test_disc_velocity(self):
-        assert False
+        # def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
+        function = partial(self.fvw.disc_velocity, all_turbines=True)
+        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "disc_velocity")
 
     # @unittest.skip
     def test_velocity(self):
@@ -140,6 +145,9 @@ class TestDerivatives2D(TestDerivatives):
 
     def test_velocity(self):
         super().test_velocity()
+
+    def test_disc_velocity(self):
+        super().test_disc_velocity()
 
     def test_update_state(self):
         super().test_update_state()
