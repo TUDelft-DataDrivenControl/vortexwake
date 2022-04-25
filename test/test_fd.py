@@ -53,6 +53,7 @@ class TestDerivatives(unittest.TestCase):
         self.fvw = None
         self.dimension = None
         self.config = None
+        self.threshold = None
 
     def run_transient(self, num_steps=100):
         states = self.fvw.initialise_states()
@@ -102,7 +103,7 @@ class TestDerivatives(unittest.TestCase):
             ax[2].imshow(A-B, cmap="RdBu", vmin=-vmax, vmax=vmax)
         ax[0].set_title("analytical")
         ax[1].set_title("central diff")
-        ax[2].set_title("difference")
+        ax[2].set_title("MAE: {:1.2e}".format(mean_absolute_error(A,B)))
         fig.savefig("./figures/{:d}d/derivative_difference_{:s}.png".format(self.dimension, name), format="png", dpi=600)
 
 
@@ -116,8 +117,7 @@ class TestDerivatives(unittest.TestCase):
         function = partial(self.fvw.disc_velocity, all_turbines=True)
         (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0,
                                                                                             "disc_velocity")
-
-        threshold = 1e-6
+        threshold = 5e-4
         self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
         self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
@@ -159,7 +159,7 @@ class TestDerivatives(unittest.TestCase):
                 if row < 1 and col < 2:
                     threshold = 1e-3
                 else:
-                    threshold = 1e-6
+                    threshold = 1e-5
                 # print(row,col)
                 self.assertLess(mean_absolute_error(df_dq_A[ida0:ida1, idb0:idb1], df_dq_B[ida0:ida1, idb0:idb1]),
                                 threshold)
@@ -178,7 +178,8 @@ class TestDerivatives(unittest.TestCase):
         Q = self.rng.random((n+1, 1, self.fvw.total_turbines))
         R = self.rng.random((n+1, self.fvw.total_controls, self.fvw.total_controls))
         for k in range(n+1):
-            R[k] = np.diag(self.rng.random(self.fvw.total_controls))
+            # todo: test for diagonality of R weight matrix
+            R[k] = 1e-3*np.diag(self.rng.random(self.fvw.total_controls)) # R needs to be diagonal
             # this works
             # Q[k] = np.ones_like(Q[k])
             # R[k] = 0
@@ -213,17 +214,12 @@ class TestDerivatives(unittest.TestCase):
         gradient_A = (y2 - y1) / (2 * dm)
 
         self.print_difference_plots(gradient_A, gradient_B, "full_gradient")
-        print(mean_absolute_error(gradient_A[:, self.fvw.induction_idx::self.fvw.num_controls],
-                            gradient_B[:, self.fvw.induction_idx::self.fvw.num_controls]))
-        print(mean_absolute_error(gradient_A[:, self.fvw.yaw_idx::self.fvw.num_controls],
-                                  gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]))
-        print(mean_absolute_error(gradient_A,
-                                  gradient_B))
+        threshold = 5e-4
         self.assertLess(mean_absolute_error(gradient_A[:,self.fvw.induction_idx::self.fvw.num_controls],
-                                            gradient_B[:,self.fvw.induction_idx::self.fvw.num_controls]), 5e-4)
+                                            gradient_B[:,self.fvw.induction_idx::self.fvw.num_controls]), threshold)
         self.assertLess(mean_absolute_error(gradient_A[:, self.fvw.yaw_idx::self.fvw.num_controls],
-                                            gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]), 5e-4)
-        self.assertLess(mean_absolute_error(gradient_A, gradient_B), 5e-4)
+                                            gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]), threshold)
+        self.assertLess(mean_absolute_error(gradient_A, gradient_B), threshold)
 
 
 class TestDerivatives3D(TestDerivatives):
@@ -234,6 +230,7 @@ class TestDerivatives3D(TestDerivatives):
         self.dimension = 3
         self.fvw = self.vw("../config/base_3d.json")
         self.q0, self.m0 = self.run_transient()
+        self.threshold = 5e-4
 
     # @unittest.skip
     def test_velocity(self):
@@ -260,6 +257,7 @@ class TestDerivatives2D(TestDerivatives):
         self.dimension = 2
         self.fvw = self.vw("../config/base_2d.json")
         self.q0, self.m0 = self.run_transient(200)
+        self.threshold = 1e-6
 
     def test_velocity(self):
         super().test_velocity()
