@@ -400,7 +400,7 @@ class VortexWake2D(VortexWake):
             du_dX = du_dq[:, self.X_index_start:self.X_index_end]
             du_dGamma = du_dq[:, self.G_index_start:self.G_index_end]
             du_dU = du_dq[:, self.U_index_start:self.U_index_end]
-            du_dM = du_dq[:,self.M_index_start:self.M_index_end]
+            du_dM = du_dq[:, self.M_index_start:self.M_index_end]
             ##   dX_dX
 
             pi = np.pi
@@ -476,6 +476,9 @@ class VortexWake2D(VortexWake):
 
             du_dX[1::2, 0::2] += dinf_y_dx.T.squeeze()
             du_dX[1::2, 1::2] += dinf_y_dy.T.squeeze()
+
+            du_dU[0::2,0::2] = normalised_weights.T
+            du_dU[1::2,1::2] = normalised_weights.T
 
             ##   du_dGamma
             du_dGamma[0::2, :] = ((-ry / Gammak) * u02).T
@@ -678,8 +681,8 @@ class VortexWake2D(VortexWake):
             ## dX0_dq
             ## dGamma0_dq
             for wt in range(self.num_turbines):
-                dqn_dq[P + wt * E1 + 0] = -dGamma0_dq[wt]
-                dqn_dq[P + wt * E1 + 1] = dGamma0_dq[wt]
+                dqn_dq[P + wt * E1 + 0] = dGamma0_dq[wt]
+                dqn_dq[P + wt * E1 + 1] = -dGamma0_dq[wt]
 
             dqn_dq = np.where(np.isnan(dqn_dq), 0, dqn_dq)
         ## dqn_dm

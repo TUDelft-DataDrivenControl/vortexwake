@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as test
 import json
 import matplotlib.pyplot as plt
-
+from functools import partial
 
 def construct_jacobian_fd(f, q, m, dq=1e-4, dm=1e-4):
     q0 = q.copy()
@@ -58,6 +58,35 @@ class TestDerivatives(unittest.TestCase):
         qh, _, _ = self.fvw.run_forward(q0, m, u, n, with_tangent=False)
         return qh[-1].copy(), m[-1].copy()
 
+    def print_graphical_derivative_comparison(self, function, state, controls, name):
+
+        def f(q,m):
+            return function(q.copy(), m.copy(), with_tangent=False)[0].reshape(-1,1)
+
+        df_dq_A, df_dm_A = construct_jacobian_fd(f, state.copy(), controls.copy())
+        df_dq_B, df_dm_B = function(state.copy(), controls.copy(), with_tangent=True)[1:]
+
+        fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
+        vmax = 1e-3
+        ax[0].imshow(df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
+        ax[1].imshow(df_dq_A, cmap="RdBu", vmin=-vmax, vmax=vmax)
+        ax[2].imshow(df_dq_A - df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
+        ax[0].set_title("analytical")
+        ax[1].set_title("central diff")
+        ax[2].set_title("difference")
+        fig.savefig("./figures/adj_fd_{:s}_dq_{:d}.png".format(name, self.dimension), format="png", dpi=600)
+
+        fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
+        vmax = 1e-3
+        ax[0].plot(df_dm_B)
+        ax[1].plot(df_dm_A)
+        ax[2].plot(df_dm_A - df_dm_B)
+        ax[0].set_title("analytical")
+        ax[1].set_title("central diff")
+        ax[2].set_title("difference")
+        fig.savefig("./figures/adj_fd_{:s}_dm_{:d}.png".format(name, self.dimension), format="png", dpi=600)
+
+
     @unittest.skip
     def test_new_rings(self):
         assert False
@@ -66,39 +95,25 @@ class TestDerivatives(unittest.TestCase):
     def test_disc_velocity(self):
         assert False
 
-    @unittest.skip
+    # @unittest.skip
     def test_velocity(self):
-        assert False
+        n = self.rng.integers(5,10)
+        points = self.rng.standard_normal((n, self.dimension))
+        points[:,0] += np.arange(n)
+        function = partial(self.fvw.velocity, points=points)
+        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "velocity")
+        # assert False
 
     @unittest.skip
     def test_power(self):
         assert False
 
+
     # @unittest.skip
     def test_update_state(self):
-        inflow = self.fvw.unit_vector_x
-
-        def f(q, m):
-            states = q
-            controls = m
-            return self.fvw.update_state(states, controls, inflow, with_tangent=False)[0]
-
-        df_dq_A, df_dm_A = construct_jacobian_fd(f, self.q0, self.m0)
-        df_dq_B, df_dm_B = self.fvw.update_state(self.q0, self.m0, inflow, with_tangent=True)[1:]
-
-        fig, ax = plt.subplots(1, 3, sharex='all', sharey='all',figsize=(12,6))
-        vmax = 1e-3
-        ax[0].imshow(df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
-        ax[1].imshow(df_dq_A, cmap="RdBu", vmin=-vmax, vmax=vmax)
-        ax[2].imshow(df_dq_A-df_dq_B, cmap="RdBu", vmin=-vmax, vmax=vmax)
-        fig.savefig("./figures/adj_fd_update_state_dq_{:d}.png".format(self.dimension), format="png",dpi=600)
-
-        fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
-        vmax = 1e-3
-        ax[0].plot(df_dm_B)
-        ax[1].plot(df_dm_A)
-        ax[2].plot(df_dm_A - df_dm_B)
-        fig.savefig("./figures/adj_fd_update_state_dm_{:d}.png".format(self.dimension), format="png", dpi=600)
+        # inflow = self.fvw.unit_vector_x
+        function = partial(self.fvw.update_state, inflow=self.fvw.unit_vector_x)
+        self.print_graphical_derivative_comparison(function, self.q0, self.m0, "update_state")
 
     @unittest.skip
     def test_full_gradient(self):
@@ -122,3 +137,9 @@ class TestDerivatives2D(TestDerivatives):
         self.dimension = 2
         self.fvw = self.vw("../config/base_2d.json")
         self.q0, self.m0 = self.run_transient()
+
+    def test_velocity(self):
+        super().test_velocity()
+
+    def test_update_state(self):
+        super().test_update_state()
