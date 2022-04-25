@@ -178,8 +178,16 @@ class TestDerivatives(unittest.TestCase):
         Q = self.rng.random((n+1, 1, self.fvw.total_turbines))
         R = self.rng.random((n+1, self.fvw.total_controls, self.fvw.total_controls))
         for k in range(n+1):
-            Q[k] = np.ones_like(Q[k])
-            R[k] = 0 #np.eye(self.fvw.total_controls)
+            R[k] = np.diag(self.rng.random(self.fvw.total_controls))
+            # this works
+            # Q[k] = np.ones_like(Q[k])
+            # R[k] = 0
+            # this works
+            # Q[k] = np.ones_like(Q[k])
+            # R[k] = np.eye(self.fvw.total_controls)
+            # this works
+            # Q[k] = 0
+            # R[k] = np.eye(self.fvw.total_controls)
         phi, dphi_dq, dphi_dm = self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=True)
         gradient_B = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
 
@@ -205,8 +213,17 @@ class TestDerivatives(unittest.TestCase):
         gradient_A = (y2 - y1) / (2 * dm)
 
         self.print_difference_plots(gradient_A, gradient_B, "full_gradient")
-
-        self.assertLess(mean_absolute_error(gradient_A, gradient_B),1e-5)
+        print(mean_absolute_error(gradient_A[:, self.fvw.induction_idx::self.fvw.num_controls],
+                            gradient_B[:, self.fvw.induction_idx::self.fvw.num_controls]))
+        print(mean_absolute_error(gradient_A[:, self.fvw.yaw_idx::self.fvw.num_controls],
+                                  gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]))
+        print(mean_absolute_error(gradient_A,
+                                  gradient_B))
+        self.assertLess(mean_absolute_error(gradient_A[:,self.fvw.induction_idx::self.fvw.num_controls],
+                                            gradient_B[:,self.fvw.induction_idx::self.fvw.num_controls]), 5e-4)
+        self.assertLess(mean_absolute_error(gradient_A[:, self.fvw.yaw_idx::self.fvw.num_controls],
+                                            gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]), 5e-4)
+        self.assertLess(mean_absolute_error(gradient_A, gradient_B), 5e-4)
 
 
 class TestDerivatives3D(TestDerivatives):

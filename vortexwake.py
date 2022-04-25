@@ -214,15 +214,15 @@ class VortexWake:
         q = initial_state.copy()
         state_history[0] = q.T
         for k in range(0, num_steps):
-            t1 = time()
+            # t1 = time()
             q, dqn_dq_history[k], dqn_dm_history[k] = self.update_state(q,
                                                                         control_series[k],
                                                                         inflow_series[k],
                                                                         with_tangent)
             # q, dqn_dq_history[idx], dqn_dm_history[idx] = update_state_with_tangent(q, controls[idx], inflow[idx])
             state_history[k + 1] = q.T
-            t2 = time()
-            print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
+            # t2 = time()
+            # print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
 
         return state_history, dqn_dq_history, dqn_dm_history
 
