@@ -718,7 +718,7 @@ class VortexWake2D(VortexWake):
 
         dqn_dm[self.M_index_start:self.M_index_end] = dM0_dm
 
-        dqn_dm[self.G_index_start:self.G_index_end:2*self.num_rings] = dGamma0_dm 
+        dqn_dm[self.G_index_start:self.G_index_end:2*self.num_rings] = dGamma0_dm
         dqn_dm[self.G_index_start+1:self.G_index_end:2 * self.num_rings] = dGamma0_dm * -1
 
 
@@ -878,6 +878,7 @@ class VortexWake3D(VortexWake):
 
         n_p = p.shape[0]
         du_dq = np.zeros((n_p * 3, self.num_states))
+        du_dp = np.zeros((n_p * 3, n_p * 3))
         if with_tangent:
             ## select subset of full jacobian
             du_dX = du_dq[:, self.X_index_start:self.X_index_end]
@@ -1234,9 +1235,21 @@ class VortexWake3D(VortexWake):
 
             du_dq = np.where(np.isnan(du_dq), 0, du_dq)
 
+            du_dp[0::3, 0::3] = np.diag(np.sum(du_x_dx0_x, axis=0))
+            du_dp[0::3, 1::3] = np.diag(np.sum(du_x_dx0_y, axis=0))
+            du_dp[0::3, 2::3] = np.diag(np.sum(du_x_dx0_z, axis=0))
+
+            du_dp[1::3, 0::3] = np.diag(np.sum(du_y_dx0_x, axis=0))
+            du_dp[1::3, 1::3] = np.diag(np.sum(du_y_dx0_y, axis=0))
+            du_dp[1::3, 2::3] = np.diag(np.sum(du_y_dx0_z, axis=0))
+
+            du_dp[2::3, 0::3] = np.diag(np.sum(du_z_dx0_x, axis=0))
+            du_dp[2::3, 1::3] = np.diag(np.sum(du_z_dx0_y, axis=0))
+            du_dp[2::3, 2::3] = np.diag(np.sum(du_z_dx0_z, axis=0))
+
         du_dm = np.zeros((n_p * 3, len(controls)))
 
-        return result, du_dq, du_dm
+        return result, du_dq, du_dm, du_dp
 
     def update_state(self, states, controls, inflow, with_tangent):
         states = states.copy()

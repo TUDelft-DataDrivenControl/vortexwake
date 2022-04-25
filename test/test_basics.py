@@ -155,8 +155,8 @@ class TestVortexWake(unittest.TestCase):
         p = self.rng.standard_normal((number_of_points, self.dimension))
         q = self.rng.random((fvw.num_states, 1))
         m = self.rng.random(fvw.total_controls)
-        u_no_tangent, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=False)
-        u, du_dq, du_dm = fvw.velocity(q, m, p, with_tangent=True)
+        u_no_tangent, du_dq, du_dm, du_dp = fvw.velocity(q, m, p, with_tangent=False)
+        u, du_dq, du_dm, du_dp = fvw.velocity(q, m, p, with_tangent=True)
         test.assert_almost_equal(u_no_tangent, u)
 
     def test_disc_velocity(self):

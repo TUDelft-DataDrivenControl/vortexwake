@@ -6,6 +6,7 @@ import json
 import matplotlib.pyplot as plt
 from functools import partial
 
+
 def construct_jacobian_fd(f, q, m, dq=1e-4, dm=1e-4):
     q0 = q.copy()
     m0 = m.copy().ravel()
@@ -59,14 +60,13 @@ class TestDerivatives(unittest.TestCase):
         return qh[-1].copy(), m[-1].copy()
 
     def print_graphical_derivative_comparison(self, function, state, controls, name):
-
-        def f(q,m):
-            return function(q.copy(), m.copy(), with_tangent=False)[0].reshape(-1,1)
+        def f(q, m):
+            return function(q.copy(), m.copy(), with_tangent=False)[0].reshape(-1, 1)
 
         df_dq_A, df_dm_A = construct_jacobian_fd(f, state.copy(), controls.copy())
         df_dq_B, df_dm_B = function(state.copy(), controls.copy(), with_tangent=True)[1:3]
 
-        df_dq_B = df_dq_B.reshape(-1,self.fvw.num_states)
+        df_dq_B = df_dq_B.reshape(-1, self.fvw.num_states)
         df_dm_B = df_dm_B.reshape(-1, self.fvw.total_controls)
 
         fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
@@ -89,7 +89,6 @@ class TestDerivatives(unittest.TestCase):
         ax[2].set_title("difference")
         fig.savefig("./figures/adj_fd_{:s}_dm_{:d}.png".format(name, self.dimension), format="png", dpi=600)
 
-
     @unittest.skip
     def test_new_rings(self):
         assert False
@@ -102,9 +101,9 @@ class TestDerivatives(unittest.TestCase):
 
     # @unittest.skip
     def test_velocity(self):
-        n = self.rng.integers(5,10)
+        n = self.rng.integers(5, 10)
         points = self.rng.standard_normal((n, self.dimension))
-        points[:,0] += np.arange(n)
+        points[:, 0] += np.arange(n)
         function = partial(self.fvw.velocity, points=points)
         self.print_graphical_derivative_comparison(function, self.q0, self.m0, "velocity")
         # assert False
@@ -112,7 +111,6 @@ class TestDerivatives(unittest.TestCase):
     @unittest.skip
     def test_power(self):
         assert False
-
 
     # @unittest.skip
     def test_update_state(self):
@@ -133,6 +131,17 @@ class TestDerivatives3D(TestDerivatives):
         self.dimension = 3
         self.fvw = self.vw("../config/base_3d.json")
         self.q0, self.m0 = self.run_transient()
+
+    @unittest.skip
+    def test_velocity(self):
+        super().test_velocity()
+
+    def test_disc_velocity(self):
+        super().test_disc_velocity()
+
+    def test_update_state(self):
+        super().test_update_state()
+
 
 class TestDerivatives2D(TestDerivatives):
 
