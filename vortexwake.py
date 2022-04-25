@@ -283,10 +283,10 @@ class VortexWake:
         :param with_tangent:
         :return:
         """
-        num_steps = states.shape[0]
+        num_steps = states.shape[0]-1
 
         # evaluate the change in control value
-        dm = controls - states[:, self.M_index_start:self.M_index_end]
+        dm = controls - states[:-1, self.M_index_start:self.M_index_end]
         ddm_dq = np.zeros((self.total_controls, self.num_states))
         ddm_dq[:, self.M_index_start: self.M_index_end] = -1 * np.eye(self.total_controls)
         ddm_dm = np.eye(self.total_controls)
