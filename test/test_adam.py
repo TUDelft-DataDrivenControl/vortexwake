@@ -49,5 +49,5 @@ class TestAdam(unittest.TestCase):
         x_opt = adam.minimise(f, x0, q0)
         y_opt = f(x_opt, q0)[0]
 
-        test.assert_equal(y_opt, 0.)
-        test.assert_array_less(np.abs(x_opt), 1e-10)
+        test.assert_array_less(y_opt, y0)
+        test.assert_array_less(np.abs(x_opt), np.abs(x0))

@@ -43,9 +43,12 @@ class Adam:
         self.reset_initial_conditions()
 
     def minimise(self, fun, x0, q0):
+        # self.reset_initial_conditions()
         self.f = 0
         self.xh = np.zeros((self.max_iter, len(x0)))
+        self.xt = x0.copy()
 
+        # todo: break loop for NaN values in solution or boundary exceeded?
         while self.not_converged():
             self.t = self.t + 1
             # get gradients w.r.t. objective
