@@ -6,8 +6,10 @@ import json
 import matplotlib.pyplot as plt
 from functools import partial
 
+
 def get_colours(n):
     return plt.cm.viridis(np.linspace(0.1, 0.9, n))
+
 
 def mean_absolute_error(A, B):
     return np.sum(np.abs(A - B)) / (np.product(A.shape))  # / np.sum(np.abs(A))
@@ -76,7 +78,7 @@ class TestDerivatives(unittest.TestCase):
         df_dq_B = df_dq_B.reshape(-1, self.fvw.num_states)
         df_dm_B = df_dm_B.reshape(-1, self.fvw.total_controls)
 
-        self.print_difference_plots(df_dq_A, df_dq_B, name+"_dq")
+        self.print_difference_plots(df_dq_A, df_dq_B, name + "_dq")
         self.print_difference_plots(df_dm_A, df_dm_B, name + "_dm")
 
         return (df_dq_A, df_dm_A), (df_dq_B, df_dm_B)
@@ -85,27 +87,27 @@ class TestDerivatives(unittest.TestCase):
         fig, ax = plt.subplots(1, 3, sharex='all', sharey='all', figsize=(12, 6))
         vmax = 1e-3
 
-        if A.shape[1] < 5 or A.shape[0]< 5:
-            if A.shape[0] <A.shape[1]:
+        if A.shape[1] < 5 or A.shape[0] < 5:
+            if A.shape[0] < A.shape[1]:
                 A = A.T
                 B = B.T
             num_lines = A.shape[1]
-            colours = get_colours(num_lines+1)
+            colours = get_colours(num_lines + 1)
             for n in range(num_lines):
-                ax[0].plot(B[:,n], c=colours[n])
-                ax[1].plot(A[:,n], c=colours[n])
-                ax[2].plot((A-B)[:,n], c=colours[n])
+                ax[0].plot(B[:, n], c=colours[n])
+                ax[1].plot(A[:, n], c=colours[n])
+                ax[2].plot((A - B)[:, n], c=colours[n])
             for a in ax:
                 a.grid(True)
         else:
             ax[0].imshow(B, cmap="RdBu", vmin=-vmax, vmax=vmax)
             ax[1].imshow(A, cmap="RdBu", vmin=-vmax, vmax=vmax)
-            ax[2].imshow(A-B, cmap="RdBu", vmin=-vmax, vmax=vmax)
+            ax[2].imshow(A - B, cmap="RdBu", vmin=-vmax, vmax=vmax)
         ax[0].set_title("analytical")
         ax[1].set_title("central diff")
-        ax[2].set_title("MAE: {:1.2e}".format(mean_absolute_error(A,B)))
-        fig.savefig("./figures/{:d}d/derivative_difference_{:s}.png".format(self.dimension, name), format="png", dpi=600)
-
+        ax[2].set_title("MAE: {:1.2e}".format(mean_absolute_error(A, B)))
+        fig.savefig("./figures/{:d}d/derivative_difference_{:s}.png".format(self.dimension, name), format="png",
+                    dpi=600)
 
     @unittest.skip
     def test_new_rings(self):
@@ -168,18 +170,19 @@ class TestDerivatives(unittest.TestCase):
 
     # @unittest.skip
     def test_full_gradient(self):
-        num_steps = self.rng.integers(5,10)
+        num_steps = self.rng.integers(5, 10)
         n = num_steps
-        m = np.zeros((n+1, self.fvw.total_controls))
-        m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random((n+1, self.fvw.num_controls))
-        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n+1, self.fvw.num_controls))
+        m = np.zeros((n + 1, self.fvw.total_controls))
+        m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random(
+            (n + 1, self.fvw.num_controls))
+        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n + 1, self.fvw.num_controls))
         u = np.zeros((n, self.fvw.dim)) + self.fvw.unit_vector_x
         qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m, u, n, with_tangent=True)
-        Q = self.rng.random((n+1, 1, self.fvw.total_turbines))
-        R = self.rng.random((n+1, self.fvw.total_controls, self.fvw.total_controls))
-        for k in range(n+1):
+        Q = self.rng.random((n + 1, 1, self.fvw.total_turbines))
+        R = self.rng.random((n + 1, self.fvw.total_controls, self.fvw.total_controls))
+        for k in range(n + 1):
             # todo: test for diagonality of R weight matrix
-            R[k] = 1e-3*np.diag(self.rng.random(self.fvw.total_controls)) # R needs to be diagonal
+            R[k] = 1e-3 * np.diag(self.rng.random(self.fvw.total_controls))  # R needs to be diagonal
             # this works
             # Q[k] = np.ones_like(Q[k])
             # R[k] = 0
@@ -215,11 +218,42 @@ class TestDerivatives(unittest.TestCase):
 
         self.print_difference_plots(gradient_A, gradient_B, "full_gradient")
         threshold = 5e-4
-        self.assertLess(mean_absolute_error(gradient_A[:,self.fvw.induction_idx::self.fvw.num_controls],
-                                            gradient_B[:,self.fvw.induction_idx::self.fvw.num_controls]), threshold)
+        self.assertLess(mean_absolute_error(gradient_A[:, self.fvw.induction_idx::self.fvw.num_controls],
+                                            gradient_B[:, self.fvw.induction_idx::self.fvw.num_controls]), threshold)
         self.assertLess(mean_absolute_error(gradient_A[:, self.fvw.yaw_idx::self.fvw.num_controls],
                                             gradient_B[:, self.fvw.yaw_idx::self.fvw.num_controls]), threshold)
         self.assertLess(mean_absolute_error(gradient_A, gradient_B), threshold)
+
+    def test_full_gradient_taylor_expansion(self):
+        num_steps = self.rng.integers(5, 10)
+        n = num_steps
+        m = np.zeros((n + 1, self.fvw.total_controls))
+        m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random(
+            (n + 1, self.fvw.num_controls))
+        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n + 1, self.fvw.num_controls))
+        u = np.zeros((n, self.fvw.dim)) + self.fvw.unit_vector_x
+        qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m, u, n, with_tangent=True)
+        Q = self.rng.random((n + 1, 1, self.fvw.total_turbines))
+        R = self.rng.random((n + 1, self.fvw.total_controls, self.fvw.total_controls))
+        for k in range(n + 1):
+            # todo: test for diagonality of R weight matrix
+            R[k] = 1e-3 * np.diag(self.rng.random(self.fvw.total_controls))  # R needs to be diagonal
+        phi, dphi_dq, dphi_dm = self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=True)
+        gradient = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
+        y0 = np.sum(phi)
+        h = 1e-1 / (2 ** np.arange(5))
+        dm = np.ones_like(m)
+        yv = np.zeros_like(h)
+        taylor_remainder = np.zeros_like(h)
+        # print
+        for k in range(len(h)):
+            qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m + h[k] * dm, u, n, with_tangent=False)
+            yv[k] = np.sum(self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=False)[0])
+            taylor_remainder[k] = yv[k] - y0 - h[k] * (gradient * dm[:-1]).sum()
+
+        taylor_convergence = taylor_remainder[:-1] / taylor_remainder[1:]
+        print(taylor_convergence)
+        test.assert_array_less(np.abs(taylor_convergence - 4), 0.4)
 
 
 class TestDerivatives3D(TestDerivatives):
@@ -248,6 +282,9 @@ class TestDerivatives3D(TestDerivatives):
     def test_full_gradient(self):
         super().test_full_gradient()
 
+    def test_full_gradient_taylor_expansion(self):
+        super().test_full_gradient_taylor_expansion()
+
 
 class TestDerivatives2D(TestDerivatives):
 
@@ -273,3 +310,6 @@ class TestDerivatives2D(TestDerivatives):
 
     def test_full_gradient(self):
         super().test_full_gradient()
+
+    def test_full_gradient_taylor_expansion(self):
+        super().test_full_gradient_taylor_expansion()
