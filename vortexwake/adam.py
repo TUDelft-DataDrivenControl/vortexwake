@@ -74,7 +74,8 @@ class Adam:
 
             print("Iterate {:d} - f: {:.3e}".format(self.t, self.f))
             if np.any(np.isnan(self.xh[1])):
-                break
+                raise ValueError("NaN in solution.")
+
         return self.xh[np.argmin(self.fh)]
 
     def not_converged(self):

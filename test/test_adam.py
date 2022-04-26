@@ -55,4 +55,11 @@ class TestAdam(unittest.TestCase):
         test.assert_array_less(np.abs(x_opt), np.abs(x0))
 
     def test_nan_in_solution(self):
-        assert False
+        def f(x, q):
+            return np.sum(x ** 2), 2 * x
+
+        x0 = self.rng.random(10)
+        x0[self.rng.integers(0, 10)] = np.nan
+        q0 = 0
+        adam = Adam({"alpha": 1e-2})
+        self.assertRaises(ValueError, adam.minimise, f, x0, q0)
