@@ -2,6 +2,7 @@ import unittest
 import numpy.testing as test
 from adam import *
 
+
 class TestAdam(unittest.TestCase):
 
     def setUp(self):
@@ -22,11 +23,11 @@ class TestAdam(unittest.TestCase):
 
     def test_init_from_config(self):
         config = {}
-        config["alpha"] = 1e-2*self.rng.random()
+        config["alpha"] = 1e-2 * self.rng.random()
         config["beta_1"] = self.rng.random()
         config["beta_2"] = self.rng.random()
-        config["eps"] = 1-4*self.rng.random()
-        config["max_iter"] = self.rng.integers(0,300)
+        config["eps"] = 1 - 4 * self.rng.random()
+        config["max_iter"] = self.rng.integers(0, 300)
         adam = Adam(config)
         self.assertEqual(adam.alpha, config["alpha"])
         self.assertEqual(adam.beta_1, config["beta_1"])
@@ -40,14 +41,18 @@ class TestAdam(unittest.TestCase):
         self.assertEqual(adam.f, 0)
 
     def test_optimisation(self):
-        def f(x,q):
-            return np.sum(x**2), 2*x
+        def f(x, q):
+            return np.sum(x ** 2), 2 * x
+
         x0 = self.rng.random(10)
         q0 = 0
         y0 = f(x0, q0)[0]
-        adam = Adam()
+        adam = Adam({"alpha": 1e-2})
         x_opt = adam.minimise(f, x0, q0)
         y_opt = f(x_opt, q0)[0]
 
         test.assert_array_less(y_opt, y0)
         test.assert_array_less(np.abs(x_opt), np.abs(x0))
+
+    def test_nan_in_solution(self):
+        assert False

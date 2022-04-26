@@ -71,6 +71,10 @@ class Adam:
             # more efficient version??
             #     alphat = alpha * np.sqrt(1-beta_2**t) / (1-beta_1**t)
             #     xt = xt - alphat * mt / (np.sqrt(vt)+eps)
+
+            print("Iterate {:d} - f: {:.3e}".format(self.t, self.f))
+            if np.any(np.isnan(self.xh[1])):
+                break
         return self.xh[np.argmin(self.fh)]
 
     def not_converged(self):
