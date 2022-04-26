@@ -1,8 +1,7 @@
 import unittest
-import vortexwake as vw
+from vortexwake import vortexwake as vw
 import numpy as np
 import numpy.testing as test
-import json
 import matplotlib.pyplot as plt
 from functools import partial
 

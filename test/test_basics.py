@@ -1,5 +1,5 @@
 import unittest
-import vortexwake as vw
+from vortexwake import vortexwake as vw
 import numpy as np
 import numpy.testing as test
 import json
@@ -286,5 +286,9 @@ class TestVortexWake2D(TestVortexWake):
     #
 # todo: robust derivative testing?
 # todo: verify gradient calculation with a simple (linear) model
+# todo: save/load states and output
+# todo: follow optimisation progress in graphical interface?
+
+
 if __name__ == '__main__':
     unittest.main()

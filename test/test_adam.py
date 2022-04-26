@@ -1,6 +1,6 @@
 import unittest
 import numpy.testing as test
-from adam import *
+from vortexwake.adam import *
 
 
 class TestAdam(unittest.TestCase):
