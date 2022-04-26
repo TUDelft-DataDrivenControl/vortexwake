@@ -171,16 +171,17 @@ class TestDerivatives(unittest.TestCase):
     # @unittest.skip
     def test_full_gradient(self):
         num_steps = self.rng.integers(5, 10)
+        print(num_steps)
         n = num_steps
-        m = np.zeros((n + 1, self.fvw.total_controls))
+        m = np.zeros((n, self.fvw.total_controls))
         m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random(
-            (n + 1, self.fvw.num_controls))
-        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n + 1, self.fvw.num_controls))
+            (n, self.fvw.num_controls))
+        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n, self.fvw.num_controls))
         u = np.zeros((n, self.fvw.dim)) + self.fvw.unit_vector_x
         qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m, u, n, with_tangent=True)
-        Q = self.rng.random((n + 1, 1, self.fvw.total_turbines))
-        R = self.rng.random((n + 1, self.fvw.total_controls, self.fvw.total_controls))
-        for k in range(n + 1):
+        Q = self.rng.random((n+1, 1, self.fvw.total_turbines))
+        R = self.rng.random((n+1, self.fvw.total_controls, self.fvw.total_controls))
+        for k in range(n+1):
             # todo: test for diagonality of R weight matrix
             R[k] = 1e-3 * np.diag(self.rng.random(self.fvw.total_controls))  # R needs to be diagonal
             # this works
@@ -193,6 +194,7 @@ class TestDerivatives(unittest.TestCase):
             # Q[k] = 0
             # R[k] = np.eye(self.fvw.total_controls)
         phi, dphi_dq, dphi_dm = self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=True)
+        print(phi.shape, dphi_dq.shape, dphi_dm.shape)
         gradient_B = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
 
         y0 = np.sum(phi)
@@ -216,6 +218,10 @@ class TestDerivatives(unittest.TestCase):
 
         gradient_A = (y2 - y1) / (2 * dm)
 
+        # print(y0, y1, y2)
+        test.assert_allclose(y1,y0, 10*dm)
+        test.assert_allclose(y2, y0, 10 * dm)
+
         self.print_difference_plots(gradient_A, gradient_B, "full_gradient")
         threshold = 5e-4
         self.assertLess(mean_absolute_error(gradient_A[:, self.fvw.induction_idx::self.fvw.num_controls],
@@ -227,17 +233,17 @@ class TestDerivatives(unittest.TestCase):
     def test_full_gradient_taylor_expansion(self):
         num_steps = self.rng.integers(5, 10)
         n = num_steps
-        m = np.zeros((n + 1, self.fvw.total_controls))
+        m = np.zeros((n, self.fvw.total_controls))
         m[:, self.fvw.induction_idx::self.fvw.num_controls] = 0.25 + 0.02 * self.rng.random(
-            (n + 1, self.fvw.num_controls))
-        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n + 1, self.fvw.num_controls))
+            (n, self.fvw.num_controls))
+        m[:, self.fvw.yaw_idx::self.fvw.num_controls] = 20 + 2 * self.rng.random((n, self.fvw.num_controls))
         u = np.zeros((n, self.fvw.dim)) + self.fvw.unit_vector_x
         qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m, u, n, with_tangent=True)
-        Q = self.rng.random((n + 1, 1, self.fvw.total_turbines))
-        R = self.rng.random((n + 1, self.fvw.total_controls, self.fvw.total_controls))
-        for k in range(n + 1):
+        Q = self.rng.random((n+1, 1, self.fvw.total_turbines))
+        R = self.rng.random((n+1, self.fvw.total_controls, self.fvw.total_controls))
+        for k in range(n):
             # todo: test for diagonality of R weight matrix
-            R[k] = 1e-3 * np.diag(self.rng.random(self.fvw.total_controls))  # R needs to be diagonal
+            R[k] = 1e-5 * np.diag(self.rng.random(self.fvw.total_controls))  # R needs to be diagonal
         phi, dphi_dq, dphi_dm = self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=True)
         gradient = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
         y0 = np.sum(phi)
@@ -249,7 +255,7 @@ class TestDerivatives(unittest.TestCase):
         for k in range(len(h)):
             qh, dqn_dq, dqn_dm = self.fvw.run_forward(self.q0, m + h[k] * dm, u, n, with_tangent=False)
             yv[k] = np.sum(self.fvw.evaluate_objective_function(qh, m, Q, R, with_tangent=False)[0])
-            taylor_remainder[k] = yv[k] - y0 - h[k] * (gradient * dm[:-1]).sum()
+            taylor_remainder[k] = yv[k] - y0 - h[k] * (gradient * dm).sum()
 
         taylor_convergence = taylor_remainder[:-1] / taylor_remainder[1:]
         print(taylor_convergence)

@@ -285,19 +285,22 @@ class VortexWake:
         """
         num_steps = states.shape[0]-1
 
+        m = np.zeros((num_steps+1, self.total_controls))
+        m[:-1] = controls
         # evaluate the change in control value
-        dm = controls - states[:-1, self.M_index_start:self.M_index_end]
+        dm = np.zeros((num_steps+1, self.total_controls))
+        dm[:-1] = controls - states[:-1, self.M_index_start:self.M_index_end]
         ddm_dq = np.zeros((self.total_controls, self.num_states))
         ddm_dq[:, self.M_index_start: self.M_index_end] = -1 * np.eye(self.total_controls)
         ddm_dm = np.eye(self.total_controls)
 
-        phi = np.zeros(num_steps)
-        dphi_dq = np.zeros((num_steps, 1, self.num_states))
-        dphi_dm = np.zeros((num_steps, 1, self.total_controls))
+        phi = np.zeros(num_steps+1)
+        dphi_dq = np.zeros((num_steps+1, 1, self.num_states))
+        dphi_dm = np.zeros((num_steps+1, 1, self.total_controls))
 
-        for k in range(num_steps):
+        for k in range(num_steps+1):
             # todo: evaluate power series and evaluate objective without for loop?
-            p, dp_dq, dp_dm = self.calculate_power(states[k], controls[k], with_tangent)
+            p, dp_dq, dp_dm = self.calculate_power(states[k], m[k], with_tangent)
             phi[k] = Q[k] @ p.T + dm[k].T @ R[k] @ dm[k]
 
             if with_tangent:
