@@ -91,13 +91,22 @@ class TestVortexWake(unittest.TestCase):
         self.dimension = None
         self.config = None
 
-    def test_config(self):
+    def test_config_from_file(self):
         test.assert_equal(self.fvw.dim, self.config["dimension"])
         test.assert_equal(self.fvw.time_step, self.config["time_step"])
         test.assert_equal(self.fvw.num_rings, self.config["num_rings"])
         test.assert_equal(self.fvw.num_turbines, self.config["num_turbines"])
         test.assert_equal(self.fvw.vortex_core_size, self.config["vortex_core_size"])
         test.assert_equal(self.fvw.total_turbines, self.fvw.num_turbines + self.fvw.num_virtual_turbines)
+
+    def test_config_from_dict(self):
+        fvw = self.vw(self.config)
+        test.assert_equal(fvw.dim, self.config["dimension"])
+        test.assert_equal(fvw.time_step, self.config["time_step"])
+        test.assert_equal(fvw.num_rings, self.config["num_rings"])
+        test.assert_equal(fvw.num_turbines, self.config["num_turbines"])
+        test.assert_equal(fvw.vortex_core_size, self.config["vortex_core_size"])
+        test.assert_equal(fvw.total_turbines, self.fvw.num_turbines + self.fvw.num_virtual_turbines)
 
     def test_state_vector_conversions(self):
         q = self.rng.random((self.fvw.num_states, 1))

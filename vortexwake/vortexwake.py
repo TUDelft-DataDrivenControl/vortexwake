@@ -12,51 +12,53 @@ class VortexWake:
 
     """
 
-    def __init__(self, config_file):
-        with open(config_file, "r") as cf:
-            config = json.load(cf)
-            if config["dimension"] != self.dim:
-                raise ValueError("Trying to instantiate 2D FVW with 3D configuration")
-            # self.dim = config["dimension"]
-            self.num_elements = config.get("num_elements", 2)
-            if self.dim == 2:
-                self.num_elements = 2
+    def __init__(self, config):
+        if type(config) is str:
+            with open(config, "r") as cf:
+                config = json.load(cf)
+        if config["dimension"] != self.dim:
+            raise ValueError("Trying to instantiate 2D FVW with 3D configuration")
+        # self.dim = config["dimension"]
+        self.num_elements = config.get("num_elements", 2)
+        if self.dim == 2:
+            self.num_elements = 2
 
-            self.num_rings = config["num_rings"]
-            self.num_points = self.num_elements + 1 if self.dim == 3 else self.num_elements
-            self.num_controls = 2
-            self.num_turbines = config.get("num_turbines", 1)
-            self.num_virtual_turbines = config.get("num_virtual_turbines", 0)
-            self.total_turbines = self.num_turbines + self.num_virtual_turbines
+        self.num_rings = config["num_rings"]
+        self.num_points = self.num_elements + 1 if self.dim == 3 else self.num_elements
+        self.num_controls = 2
+        self.num_turbines = config.get("num_turbines", 1)
+        self.num_virtual_turbines = config.get("num_virtual_turbines", 0)
+        self.total_turbines = self.num_turbines + self.num_virtual_turbines
 
-            self.turbine_positions = np.array(config.get("turbine_positions", [[0., 0., 0.]]))
+        self.turbine_positions = np.array(config.get("turbine_positions", [[0., 0., 0.]]))
 
-            self.total_rings = self.num_rings * self.num_turbines
-            self.total_points = self.num_points * self.total_rings
-            self.total_elements = self.num_elements * self.total_rings
-            self.total_controls = self.num_controls * self.total_turbines
-            self.num_states = (self.dim * self.total_points * 2) + self.total_elements + self.total_controls
+        self.total_rings = self.num_rings * self.num_turbines
+        self.total_points = self.num_points * self.total_rings
+        self.total_elements = self.num_elements * self.total_rings
+        self.total_controls = self.num_controls * self.total_turbines
+        self.num_states = (self.dim * self.total_points * 2) + self.total_elements + self.total_controls
 
-            self.time_step = config["time_step"]
-            self.vortex_core_size = config["vortex_core_size"]
-            self.radius = 0.5
+        self.time_step = config["time_step"]
+        self.vortex_core_size = config["vortex_core_size"]
+        self.radius = 0.5
 
-            self.X_index_start = 0
-            self.X_index_end = self.dim * self.total_points
-            self.G_index_start = self.X_index_end
-            # todo: reformulate such that single Gamma per ring
-            self.G_index_end = self.G_index_start + self.total_elements
-            self.U_index_start = self.G_index_end
-            self.U_index_end = self.U_index_start + self.dim * self.total_points
-            self.M_index_start = self.U_index_end
-            self.M_index_end = self.M_index_start + self.total_controls
+        self.X_index_start = 0
+        self.X_index_end = self.dim * self.total_points
+        self.G_index_start = self.X_index_end
+        # todo: reformulate such that single Gamma per ring
+        self.G_index_end = self.G_index_start + self.total_elements
+        self.U_index_start = self.G_index_end
+        self.U_index_end = self.U_index_start + self.dim * self.total_points
+        self.M_index_start = self.U_index_end
+        self.M_index_end = self.M_index_start + self.total_controls
 
-            self.unit_vector_x = np.zeros(self.dim)
-            self.unit_vector_x[0] = 1
-            # structure of control vector
-            # todo: check number of controls
-            self.induction_idx = 0
-            self.yaw_idx = 1
+        self.unit_vector_x = np.zeros(self.dim)
+        self.unit_vector_x[0] = 1
+        # structure of control vector
+        # todo: check number of controls
+        self.induction_idx = 0
+        self.yaw_idx = 1
+
 
     def states_from_state_vector(self, q):
         """Unpack state column vector into state arrays
@@ -69,6 +71,7 @@ class VortexWake:
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
         M = q[self.M_index_start: self.M_index_end].reshape(self.total_controls, 1)
         return X, G, U, M
+
 
     def state_vector_from_states(self, X, G, U, M):
         """Pack state arrays into a single column vector
@@ -95,6 +98,7 @@ class VortexWake:
         q[self.M_index_start:self.M_index_end, 0] = M.ravel()
         return q
 
+
     def initialise_states(self):
         """Initialise states for start of numerical simulation
 
@@ -108,6 +112,7 @@ class VortexWake:
         U[::self.num_rings] = U0
         M[:] = M0
         return X, G, U, M
+
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
         """Generate values for new rings to initialised.
@@ -185,6 +190,7 @@ class VortexWake:
 
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
+
     def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
         nt = self.total_turbines if all_turbines else self.num_turbines
         pt = np.zeros((nt,) + self.rotor_disc_points.shape)
@@ -206,6 +212,7 @@ class VortexWake:
                         self.rotor_disc_weights_tiled @ du_dpt @ dpt_dpsi).squeeze()
         return ur, dur_dq, dur_dm
 
+
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
         state_history = np.zeros((num_steps + 1, self.num_states))
         dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
@@ -225,6 +232,7 @@ class VortexWake:
             # print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
 
         return state_history, dqn_dq_history, dqn_dm_history
+
 
     def calculate_power(self, states, controls, with_tangent):
         """ Calculate power from turbines simulated with free-vortex wake and virtual turbines
@@ -273,6 +281,7 @@ class VortexWake:
 
         return p, dp_dq, dp_dm
 
+
     def evaluate_objective_function(self, states, controls, Q, R, with_tangent):
         """Evaluate objective function for optimisation
 
@@ -283,22 +292,22 @@ class VortexWake:
         :param with_tangent:
         :return:
         """
-        num_steps = states.shape[0]-1
+        num_steps = states.shape[0] - 1
 
-        m = np.zeros((num_steps+1, self.total_controls))
+        m = np.zeros((num_steps + 1, self.total_controls))
         m[:-1] = controls
         # evaluate the change in control value
-        dm = np.zeros((num_steps+1, self.total_controls))
+        dm = np.zeros((num_steps + 1, self.total_controls))
         dm[:-1] = controls - states[:-1, self.M_index_start:self.M_index_end]
         ddm_dq = np.zeros((self.total_controls, self.num_states))
         ddm_dq[:, self.M_index_start: self.M_index_end] = -1 * np.eye(self.total_controls)
         ddm_dm = np.eye(self.total_controls)
 
-        phi = np.zeros(num_steps+1)
-        dphi_dq = np.zeros((num_steps+1, 1, self.num_states))
-        dphi_dm = np.zeros((num_steps+1, 1, self.total_controls))
+        phi = np.zeros(num_steps + 1)
+        dphi_dq = np.zeros((num_steps + 1, 1, self.num_states))
+        dphi_dm = np.zeros((num_steps + 1, 1, self.total_controls))
 
-        for k in range(num_steps+1):
+        for k in range(num_steps + 1):
             # todo: evaluate power series and evaluate objective without for loop?
             p, dp_dq, dp_dm = self.calculate_power(states[k], m[k], with_tangent)
             phi[k] = Q[k] @ p.T + dm[k].T @ R[k] @ dm[k]
