@@ -39,20 +39,21 @@ class TestVortexWakeSlow(unittest.TestCase):
         fvw = self.vw("../config/base_{:d}d.json".format(self.dimension))
         q0 = self.rng.random((fvw.num_states, 1))
         n = self.rng.integers(5, 10)
-        m = np.zeros((n+1, fvw.total_controls))
-        m[:, fvw.induction_idx::fvw.num_controls] = 0.5 * self.rng.random((n+1, fvw.total_turbines))
-        m[:, fvw.yaw_idx::fvw.num_controls] = 30. * self.rng.random((n+1, fvw.total_turbines))
+        m = np.zeros((n, fvw.total_controls))
+        m[:, fvw.induction_idx::fvw.num_controls] = 0.5 * self.rng.random((n, fvw.total_turbines))
+        m[:, fvw.yaw_idx::fvw.num_controls] = 30. * self.rng.random((n, fvw.total_turbines))
         u = 0.1 * self.rng.standard_normal((n, self.dimension)) + fvw.unit_vector_x
         states, dqn_dq, dqn_dm = fvw.run_forward(initial_state=q0, control_series=m,
                                                  inflow_series=u, num_steps=n,
                                                  with_tangent=True)
-        Q = self.rng.random((n+1, 1, fvw.total_turbines))
-        R = self.rng.random((n+1, fvw.total_controls, fvw.total_controls))
+        Q = self.rng.random((n + 1, 1, fvw.total_turbines))
+        R = self.rng.random((n + 1, fvw.total_controls, fvw.total_controls))
         phi, dphi_dq, dphi_dm = fvw.evaluate_objective_function(states, m, Q, R, with_tangent=True)
         gradient = vw.construct_gradient(dqn_dq, dqn_dm, dphi_dq, dphi_dm)
         # test.assert_equal(gradient.shape, (n+1, fvw.total_controls))
 
     # todo: verification of partial derivatives and total gradient
+
 
 class TestVortexWake3DSlow(TestVortexWakeSlow):
 
@@ -62,6 +63,9 @@ class TestVortexWake3DSlow(TestVortexWakeSlow):
         self.vw = vw.VortexWake3D
         # self.fvw = vw.VortexWake3D(config_name)
         self.dimension = 3
+
+    def test_construct_gradient(self):
+        super().test_construct_gradient()
 
 
 class TestVortexWake2DSlow(TestVortexWakeSlow):
@@ -74,3 +78,6 @@ class TestVortexWake2DSlow(TestVortexWakeSlow):
         self.vw = vw.VortexWake2D
         # self.fvw = vw.VortexWake3D(config_name)
         self.dimension = 2
+
+    def test_construct_gradient(self):
+        super().test_construct_gradient()
