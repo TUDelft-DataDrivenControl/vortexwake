@@ -132,7 +132,7 @@ class TestDerivatives(unittest.TestCase):
         (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0,
                                                                                             "velocity")
 
-        threshold = 1e-6
+        threshold = self.threshold
         self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
         self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
@@ -140,7 +140,7 @@ class TestDerivatives(unittest.TestCase):
         function = self.fvw.calculate_power  # (q, m, with_tangent=True)
         (df_dq_A, df_dm_A), (df_dq_B, df_dm_B) = self.print_graphical_derivative_comparison(function, self.q0, self.m0,
                                                                                             "power")
-        threshold = 1e-6
+        threshold = self.threshold
         self.assertLess(mean_absolute_error(df_dq_A, df_dq_B), threshold)
         self.assertLess(mean_absolute_error(df_dm_A, df_dm_B), threshold)
 
