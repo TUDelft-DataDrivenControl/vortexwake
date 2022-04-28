@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as test
 import matplotlib.pyplot as plt
 from functools import partial
-
+from os import makedirs
 
 def get_colours(n):
     return plt.cm.viridis(np.linspace(0.1, 0.9, n))
@@ -55,6 +55,7 @@ class TestDerivatives(unittest.TestCase):
         self.dimension = None
         self.config = None
         self.threshold = None
+
 
     def run_transient(self, num_steps=100):
         states = self.fvw.initialise_states()
@@ -270,7 +271,7 @@ class TestDerivatives3D(TestDerivatives):
         self.fvw = self.vw("../config/base_3d.json")
         self.q0, self.m0 = self.run_transient()
         self.threshold = 5e-4
-
+        makedirs("./figures/3d/", exist_ok=True)
     # @unittest.skip
     def test_velocity(self):
         super().test_velocity()
@@ -300,6 +301,7 @@ class TestDerivatives2D(TestDerivatives):
         self.fvw = self.vw("../config/base_2d.json")
         self.q0, self.m0 = self.run_transient(200)
         self.threshold = 1e-6
+        makedirs("./figures/2d/", exist_ok=True)
 
     def test_velocity(self):
         super().test_velocity()
