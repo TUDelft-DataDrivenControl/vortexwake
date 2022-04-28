@@ -109,7 +109,8 @@ class VortexWake:
                                                        self.unit_vector_x)
         X[::self.num_rings] = X0
         G[::self.num_rings] = G0
-        U[::self.num_rings] = U0
+        for wt in range(self.num_turbines):
+            U[wt*self.num_rings:(wt+1)*self.num_rings] = U0[wt]
         M[:] = M0
         return X, G, U, M
 
@@ -317,24 +318,6 @@ class VortexWake:
                 dphi_dm[k] = Q[k] @ dp_dm + 2 * dm[k].T @ R[k] @ ddm_dm
 
         return phi, dphi_dq, dphi_dm
-
-
-# todo:
-# def update_state(self, q):
-# def update_state_with_tangent(self, q):
-# def run_forward(self):
-# def velocity(self, q, m, pt)
-# def velocity_tangent(self, q, m, pt)
-# def disc_velocity(self, q, m)
-# def disc_velocity_tangent(self, q, m)
-# def disc_velocity_virtual_tangent(self, q, m, pt, yaw)
-# def calculate_power()
-#  def calculate_virtual_power()
-
-
-# todo:
-# def evaluate_cost_function(
-# construct_gradient
 
 
 class VortexWake2D(VortexWake):
