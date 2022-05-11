@@ -160,7 +160,15 @@ class VortexWake:
             X0[wt, :] = X0[wt, :] @ self.rot_z(psi[wt]).T
             X0[wt] += self.turbine_positions[wt]
 
-            thrust_coefficient = 4 * a[wt] / (1 - a[wt])
+            # thrust_coefficient = (1+a[wt]**2) *  4 * a[wt] / (1 - a[wt])
+            #adjustment from Burton Wind Energy Handbook
+            ct1 = 2.3
+            at = 1-0.5*np.sqrt(ct1)
+            if a[wt] > at:
+                thrust_coefficient = ct1 / (1-a[wt])**2 - 4*(np.sqrt(ct1)-1)/(1-a[wt])
+            else:
+                thrust_coefficient = 4 * a[wt] / (1 - a[wt])
+
             n = self.unit_vector_x @ self.rot_z(psi[wt]).T
             if self.dim == 2:
                 G0[wt] = self.time_step * thrust_coefficient * (1 / 2) * (ur[wt].T @ n) ** 2 * np.array([[1], [-1]])
@@ -177,7 +185,14 @@ class VortexWake:
                 dG0_dur = h * thrust_coefficient * n * (ur[wt].T @ n)
                 dG0_dq[wt] = dG0_dur @ dur_dq[wt]
 
-                dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * (4 / (1 - a[wt]) ** 2)
+
+                if a[wt]>at:
+                    dct_da =  2  * ct1 / (1-a[wt])**3 - 4 * (np.sqrt(ct1)-1) / (1-a[wt])**2
+                else:
+                    dct_da = (4 / (1 - a[wt]) ** 2)
+                dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * dct_da
+                # dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * ((4 / (1 - a[wt]) ** 2) * (1+a[wt]**2) +  (4* 2 * a[wt]**2 / (1 - a[wt])))
+
                 dG0_dpsi = h * thrust_coefficient * (ur[wt].T @ n) * (
                         ur[wt].T @ dn_dpsi + n.T @ dur_dm[wt][:, self.yaw_idx + self.num_controls * wt])
                 # print(dG0_da, dG0_dpsi)
@@ -258,7 +273,7 @@ class VortexWake:
         for wt in range(self.total_turbines):
             n = (self.unit_vector_x) @ self.rot_z(psi[wt]).T
             # todo: check power coefficient adjustment
-            power_coefficient = (4 * a[wt]) * np.pi * self.radius ** 2
+            power_coefficient = np.pi * self.radius ** 2 * (4 * a[wt]) / (1-a[wt])
             if wt >= self.num_turbines:
                 power_coefficient *= (1 - a[wt]) ** 3
 
@@ -266,12 +281,17 @@ class VortexWake:
 
             if with_tangent:
                 dn_dpsi = (self.unit_vector_x) @ self.drot_z_dpsi(psi[wt]).T
-                dcp_da = 4 * np.pi * self.radius ** 2
+                # dcp_da = 4 * np.pi * self.radius ** 2
+                # if wt >= self.num_turbines:
+                #     dcp_da = 4 * np.pi * self.radius ** 2 * (1 - a[wt]) ** 3 \
+                #              - 4 * a[wt] * np.pi * self.radius ** 2 * 3 * (1 - a[wt]) ** 2
+                # else:
+                #     dcp_da = 4 * np.pi * self.radius ** 2
+                # dcp_da = 4 * np.pi * self.radius ** 2 / (1-a[wt])**2
                 if wt >= self.num_turbines:
-                    dcp_da = 4 * np.pi * self.radius ** 2 * (1 - a[wt]) ** 3 \
-                             - 4 * a[wt] * np.pi * self.radius ** 2 * 3 * (1 - a[wt]) ** 2
+                    dcp_da = np.pi * self.radius ** 2 * ( -1 * 4 * a[wt] * 2 * (1 - a[wt]) + 4 * (1-a[wt])**2)
                 else:
-                    dcp_da = 4 * np.pi * self.radius ** 2
+                    dcp_da = np.pi * self.radius ** 2 * (4 / (1-a[wt])**2)
 
                 da_dq = dM_dq[self.induction_idx + wt * self.num_controls]
                 dpsi_dq = dM_dq[self.yaw_idx + wt * self.num_controls]

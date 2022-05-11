@@ -10,3 +10,4 @@ integration tests
 
  derivative testing
  - graphical finite difference validation of partial derivatives / jacobians
+ - explain taylor test for gradient verification
