@@ -59,7 +59,6 @@ class VortexWake:
         self.induction_idx = 0
         self.yaw_idx = 1
 
-
     def states_from_state_vector(self, q):
         """Unpack state column vector into state arrays
 
@@ -71,7 +70,6 @@ class VortexWake:
         U = q[self.U_index_start: self.U_index_end].reshape(self.total_rings, self.num_points, self.dim)
         M = q[self.M_index_start: self.M_index_end].reshape(self.total_controls, 1)
         return X, G, U, M
-
 
     def state_vector_from_states(self, X, G, U, M):
         """Pack state arrays into a single column vector
@@ -98,7 +96,6 @@ class VortexWake:
         q[self.M_index_start:self.M_index_end, 0] = M.ravel()
         return q
 
-
     def initialise_states(self):
         """Initialise states for start of numerical simulation
 
@@ -110,10 +107,9 @@ class VortexWake:
         X[::self.num_rings] = X0
         G[::self.num_rings] = G0
         for wt in range(self.num_turbines):
-            U[wt*self.num_rings:(wt+1)*self.num_rings] = U0[wt]
+            U[wt * self.num_rings:(wt + 1) * self.num_rings] = U0[wt]
         M[:] = M0
         return X, G, U, M
-
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
         """Generate values for new rings to initialised.
@@ -161,11 +157,11 @@ class VortexWake:
             X0[wt] += self.turbine_positions[wt]
 
             # thrust_coefficient = (1+a[wt]**2) *  4 * a[wt] / (1 - a[wt])
-            #adjustment from Burton Wind Energy Handbook
+            # adjustment from Burton Wind Energy Handbook
             ct1 = 2.3
-            at = 1-0.5*np.sqrt(ct1)
+            at = 1 - 0.5 * np.sqrt(ct1)
             if a[wt] > at:
-                thrust_coefficient = ct1 / (1-a[wt])**2 - 4*(np.sqrt(ct1)-1)/(1-a[wt])
+                thrust_coefficient = ct1 / (1 - a[wt]) ** 2 - 4 * (np.sqrt(ct1) - 1) / (1 - a[wt])
             else:
                 thrust_coefficient = 4 * a[wt] / (1 - a[wt])
 
@@ -185,9 +181,8 @@ class VortexWake:
                 dG0_dur = h * thrust_coefficient * n * (ur[wt].T @ n)
                 dG0_dq[wt] = dG0_dur @ dur_dq[wt]
 
-
-                if a[wt]>at:
-                    dct_da =  2  * ct1 / (1-a[wt])**3 - 4 * (np.sqrt(ct1)-1) / (1-a[wt])**2
+                if a[wt] > at:
+                    dct_da = 2 * ct1 / (1 - a[wt]) ** 3 - 4 * (np.sqrt(ct1) - 1) / (1 - a[wt]) ** 2
                 else:
                     dct_da = (4 / (1 - a[wt]) ** 2)
                 dG0_da = h * (1 / 2) * (ur[wt].T @ n) ** 2 * dct_da
@@ -205,7 +200,6 @@ class VortexWake:
                 # dG0_dq[wt, self.M_index_start + self.yaw_idx + self.num_controls * wt] += dG0_dpsi
 
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
-
 
     def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
         nt = self.total_turbines if all_turbines else self.num_turbines
@@ -228,27 +222,33 @@ class VortexWake:
                         self.rotor_disc_weights_tiled @ du_dpt @ dpt_dpsi).squeeze()
         return ur, dur_dq, dur_dm
 
-
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
         state_history = np.zeros((num_steps + 1, self.num_states))
-        dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
-        dqn_dm_history = np.zeros((num_steps, self.num_states, self.total_controls))
-
         q = initial_state.copy()
         state_history[0] = q.T
-        for k in range(0, num_steps):
-            # t1 = time()
-            q, dqn_dq_history[k], dqn_dm_history[k] = self.update_state(q,
-                                                                        control_series[k],
-                                                                        inflow_series[k],
-                                                                        with_tangent)
-            # q, dqn_dq_history[idx], dqn_dm_history[idx] = update_state_with_tangent(q, controls[idx], inflow[idx])
-            state_history[k + 1] = q.T
+
+        if with_tangent:  # avoid memory issues for running large problems without tangent
+            dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
+            dqn_dm_history = np.zeros((num_steps, self.num_states, self.total_controls))
+            for k in range(0, num_steps):
+                # t1 = time()
+                q, dqn_dq_history[k], dqn_dm_history[k] = self.update_state(q,
+                                                                            control_series[k],
+                                                                            inflow_series[k],
+                                                                            with_tangent)
+                state_history[k + 1] = q.T
+        else:
+            for k in range(0, num_steps):
+                q = self.update_state(q,
+                                      control_series[k],
+                                      inflow_series[k],
+                                      with_tangent)[0]
+                state_history[k + 1] = q.T
+                # q, dqn_dq_history[idx], dqn_dm_history[idx] = update_state_with_tangent(q, controls[idx], inflow[idx])
             # t2 = time()
             # print("Step {:d} out of {:d} in {:.2f}.".format(k, num_steps, t2 - t1))
 
         return state_history, dqn_dq_history, dqn_dm_history
-
 
     def calculate_power(self, states, controls, with_tangent):
         """ Calculate power from turbines simulated with free-vortex wake and virtual turbines
@@ -273,7 +273,7 @@ class VortexWake:
         for wt in range(self.total_turbines):
             n = (self.unit_vector_x) @ self.rot_z(psi[wt]).T
             # todo: check power coefficient adjustment
-            power_coefficient = np.pi * self.radius ** 2 * (4 * a[wt]) / (1-a[wt])
+            power_coefficient = np.pi * self.radius ** 2 * (4 * a[wt]) / (1 - a[wt])
             if wt >= self.num_turbines:
                 power_coefficient *= (1 - a[wt]) ** 3
 
@@ -289,9 +289,9 @@ class VortexWake:
                 #     dcp_da = 4 * np.pi * self.radius ** 2
                 # dcp_da = 4 * np.pi * self.radius ** 2 / (1-a[wt])**2
                 if wt >= self.num_turbines:
-                    dcp_da = np.pi * self.radius ** 2 * ( -1 * 4 * a[wt] * 2 * (1 - a[wt]) + 4 * (1-a[wt])**2)
+                    dcp_da = np.pi * self.radius ** 2 * (-1 * 4 * a[wt] * 2 * (1 - a[wt]) + 4 * (1 - a[wt]) ** 2)
                 else:
-                    dcp_da = np.pi * self.radius ** 2 * (4 / (1-a[wt])**2)
+                    dcp_da = np.pi * self.radius ** 2 * (4 / (1 - a[wt]) ** 2)
 
                 da_dq = dM_dq[self.induction_idx + wt * self.num_controls]
                 dpsi_dq = dM_dq[self.yaw_idx + wt * self.num_controls]
@@ -301,7 +301,6 @@ class VortexWake:
                             (n @ dur_dq[wt] + (ur[wt].T @ dn_dpsi) * dpsi_dq)
 
         return p, dp_dq, dp_dm
-
 
     def evaluate_objective_function(self, states, controls, Q, R, with_tangent):
         """Evaluate objective function for optimisation
