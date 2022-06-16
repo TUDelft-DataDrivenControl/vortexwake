@@ -159,6 +159,7 @@ class VortexWake:
             # thrust_coefficient = (1+a[wt]**2) *  4 * a[wt] / (1 - a[wt])
             # adjustment from Burton Wind Energy Handbook
             ct1 = 2.3
+            # ct1 = 2.
             at = 1 - 0.5 * np.sqrt(ct1)
             if a[wt] > at:
                 thrust_coefficient = ct1 / (1 - a[wt]) ** 2 - 4 * (np.sqrt(ct1) - 1) / (1 - a[wt])
@@ -228,6 +229,7 @@ class VortexWake:
         state_history[0] = q.T
 
         if with_tangent:  # avoid memory issues for running large problems without tangent
+            #todo: add a similar switch to other functions
             dqn_dq_history = np.zeros((num_steps, self.num_states, self.num_states))
             dqn_dm_history = np.zeros((num_steps, self.num_states, self.total_controls))
             for k in range(0, num_steps):
@@ -238,6 +240,8 @@ class VortexWake:
                                                                             with_tangent)
                 state_history[k + 1] = q.T
         else:
+            dqn_dq_history = None
+            dqn_dm_history = None
             for k in range(0, num_steps):
                 q = self.update_state(q,
                                       control_series[k],
