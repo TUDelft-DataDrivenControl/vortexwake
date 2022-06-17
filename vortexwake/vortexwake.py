@@ -761,15 +761,30 @@ class VortexWake3D(VortexWake):
         self.y0 = self.radius * np.cos(azimuthal_angles)
         self.z0 = self.radius * np.sin(azimuthal_angles)
 
+        # radial points
         # define points and weights for rotor averaged velocity
-        theta = np.arange(0, 2 * np.pi, np.pi / 3)
-        r = np.linspace(0.05, 0.45, 3)
-        p = np.zeros((len(r) * len(theta), 3))
-        w = np.zeros((len(r) * len(theta), 1))
-        for idx in range(len(r)):
-            p[idx * len(theta):(idx + 1) * len(theta), 1] = r[idx] * np.cos(theta)
-            p[idx * len(theta):(idx + 1) * len(theta), 2] = r[idx] * np.sin(theta)
-            w[idx * len(theta):(idx + 1) * len(theta)] = r[idx] * (np.pi / 6) * (r[1] - r[0])
+        # theta = np.arange(0, 2 * np.pi, np.pi / 3)
+        # r = np.linspace(0.05, 0.45, 3)
+        # p = np.zeros((len(r) * len(theta), 3))
+        # w = np.zeros((len(r) * len(theta), 1))
+        # for idx in range(len(r)):
+        #     p[idx * len(theta):(idx + 1) * len(theta), 1] = r[idx] * np.cos(theta)
+        #     p[idx * len(theta):(idx + 1) * len(theta), 2] = r[idx] * np.sin(theta)
+        #     w[idx * len(theta):(idx + 1) * len(theta)] = r[idx] * (np.pi / 6) * (r[1] - r[0])
+        # isocell points
+        N1 = 3
+        nrings = 3
+        i = np.arange(nrings) + 1
+        Ni = (2 * i - 1) * N1
+        p = np.zeros((Ni.sum(), 3))
+        w = np.ones((Ni.sum(),1))
+        Ri = (i - 0.5) * (0.5 / nrings)
+        N0 = 0
+        for r in range(nrings):
+            Thi = np.arange(0, 2 * np.pi, 2 * np.pi / Ni[r])
+            p[N0:N0 + Ni[r], 1] = Ri[r] * np.cos(Thi)
+            p[N0:N0 + Ni[r], 2] = Ri[r] * np.sin(Thi)
+            N0 += Ni[r]
         self.rotor_disc_points = p
         self.rotor_disc_weights = w
         self.rotor_disc_weights_tiled = (w @ np.eye(self.dim)[:, None, :]).reshape(self.dim, self.dim * len(w))
