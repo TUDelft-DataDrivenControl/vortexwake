@@ -26,13 +26,11 @@
 
 .idea
 results
-examples
 data
 log
 jit*
 docs/build/*
 .ipynb_checkpoints
-*.ipynb
 *.egg-info
 
 test/*.json
