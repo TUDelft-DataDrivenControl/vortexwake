@@ -1,4 +1,4 @@
-Free-Vortex Wake
+Vortex Wake
 ================
 The `vortexwake` package provides an implementation of free-vortex methods for wind turbine wake modelling in 2D and 3D. 
 It includes partial derivatives for gradient construction using the discrete adjoint.
@@ -9,7 +9,7 @@ Citation
 --------
 If this work plays a role in your research, please cite the following paper:
 
-   M.J. van den Broek, B. Sanderse, J.W. van Wingerden, ''Free-Vortex Wake Modelling and Adjoint Optimisation for Wind Farm Flow Control'', Energies, 2022
+   Maarten J. van den Broek, Benjamin Sanderse, Jan-Willem van Wingerden, 'Free-Vortex Wake Modelling and Adjoint Optimisation for Wind Farm Flow Control', Energies, 2022
 
 
 .. code:: latex
