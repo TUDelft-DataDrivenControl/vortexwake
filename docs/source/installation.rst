@@ -1,5 +1,8 @@
-Introduction
+Installation
 ============
+
+
+
 
 
 Installation
@@ -17,6 +20,11 @@ Check installation with::
 	$ python -c "from vortexwake import vortexwake as vw"
 
 
+Dependencies
+------------
+Python, numPy, matplotlib, jupyter notebooks with examples
+
+
 Testing
 -------
 
@@ -29,3 +37,15 @@ Slower integration tests and gradient verification::
 
 	$ python -m unittest test_slow.py
 	$ python -m unittest test_fd.py
+
+
+Unit tests
+ - how to run
+ - test modules
+
+integration tests
+ - slow test of full system
+
+ derivative testing
+ - graphical finite difference validation of partial derivatives / jacobians
+ - explain taylor test for gradient verification

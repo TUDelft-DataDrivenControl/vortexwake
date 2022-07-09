@@ -32,10 +32,12 @@ release = '0.0'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinxcontrib.bibtex',
     'sphinx_rtd_theme',
-    'nbsphinx',
-    'nbsphinx_link'
+    'nbsphinx'
 ]
+bibtex_bibfiles=['references.bib']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
