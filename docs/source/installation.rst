@@ -1,7 +1,7 @@
-Installation
-============
+Getting Started
+===============
 
-Overview of installation instructions, dependencies, and running unit tests.
+This page provides an overview of installation instructions, dependencies, and instructions for running unit tests.
 
 
 
@@ -10,9 +10,8 @@ Installation
 
 Make editable install by cloning development branch from GitHub::
 
-	$ git clone https://github.com/mjvandenbroek/vortexwake.git
+	$ git clone https://github.com/TUDelft-DataDrivenControl/vortexwake.git
 	$ cd vortexwake
-	$ git checkout dev
 	$ pip install -e .
 
 Check installation with::
