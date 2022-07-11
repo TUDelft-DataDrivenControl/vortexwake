@@ -12,6 +12,19 @@ class VortexWake:
 
     Initialise either `VortexWake2D` or `VortexWake3D` to run.
 
+    Configuration can be specified as a Python dictionary or as a path to a `.json` file.
+
+    Parameters to be configured are:
+
+        - `dimension`, 2 or 3
+        - `time_step`, discrete time-step for simulation
+        - `num_rings`, number of rings used to model the wake
+        - `num_elements`, number of elements per ring - two for 2D, ring discretisation in 3D
+        - `vortex_core_size`, parameter for Gaussian smoothing of vortex singularity
+        - `num_turbines`, number of turbines to model with free-vortex wake
+        - `num_virtual_turbines`, number of turbines to evaluate based on flow velocity
+        - `turbine_positions`, list of positions of FVW and virtual turbines
+
     """
 
     def __init__(self, config):

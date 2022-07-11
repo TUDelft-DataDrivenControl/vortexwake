@@ -28,7 +28,7 @@ If this work plays a role in your research, please cite the following paper:
 
 The code itself may be referenced as
 
-   vortexwake, 2022, Available at http://github.com/TUDelft-DataDrivenControl/vortexwake
+   Maarten J. van den Broek, Vortex Wake, 2022, Available at http://github.com/TUDelft-DataDrivenControl/vortexwake
 
 .. code:: latex
 

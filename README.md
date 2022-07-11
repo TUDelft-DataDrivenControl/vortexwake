@@ -60,7 +60,7 @@ If this work plays a role in your research, please cite the following paper:
 
 The code itself may be referenced as:
 
-> Vortex Wake, 2022, Available at http://github.com/TUDelft-DataDrivenControl/vortexwake
+> Maarten J. van den Broek, Vortex Wake, 2022, Available at http://github.com/TUDelft-DataDrivenControl/vortexwake
 
     @misc{vortexwake2022,
         author = {van den Broek, Maarten J.},
