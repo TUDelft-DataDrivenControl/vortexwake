@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Adam:
-    """ Implementation of the Adam optimizer. (ref. Kingma)
+    """ Implementation of the Adam optimiser as described in :cite:t:`Kingma2015`.
     """
 
     def __init__(self, config=None):
@@ -24,6 +24,11 @@ class Adam:
             self.reset_initial_conditions()
 
     def reset_initial_conditions(self):
+        """Reset properties of Adam optimiser.
+        Set to 0 all of: parameter vector `xt`, moment estimates `mt`, `vt`, optimisation step `t`, objective function
+        history `fh` and solution history `xh`.
+
+        """
         self.xt = 0  # initial parameter vector
         self.mt = 0  # initialise 1st moment vector
         self.vt = 0  # initialise 2nd moment vector
@@ -32,6 +37,17 @@ class Adam:
         self.xh = 0
 
     def set_parameters_from_config(self, config):
+        """Set parameters for the Adam optimisater using a configuration dictionary.
+        Unspecified parameters are set to the defaults as:
+
+         - `alpha` = 1e-3
+         - `beta_1` = 0.9
+         - `beta_2`  = 0.999
+         - `eps` = 1e-8
+         - `max_iter` = 10
+
+        :param config: dictionary of parameters for the optimiser
+        """
         # learning rate
         self.alpha = config.get("alpha", 1e-3)
         #  exponential decay rates for moment estimates
@@ -43,6 +59,16 @@ class Adam:
         self.reset_initial_conditions()
 
     def minimise(self, fun, x0, q0):
+        """Minimise the objective function `fun` starting from an initial condition `q0` with initial guess `x0`
+        for the optimisation.
+
+        :param fun: objective function that takes a control signal like `x` and initial condition `q0`, and returns a
+            tuple (objective, gradient)
+        :param x0: initial guess for the optimisation
+        :param q0: initial condition for the objective function
+
+        :return: control signal along optimiser trajectory for which objective function is minimal
+        """
         # self.reset_initial_conditions()
         self.f = 0
         self.xh = np.zeros((self.max_iter, len(x0)))
@@ -79,5 +105,10 @@ class Adam:
         return self.xh[np.argmin(self.fh)]
 
     def not_converged(self):
+        """Test convergence of optimisation.
+        Currently only tests for maximum number of iterations.
+
+        :return: boolean, `True` as long as convergence is not reached
+        """
         # todo: implement other convergence criterion
         return self.t < self.max_iter
