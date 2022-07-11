@@ -3,6 +3,17 @@ import numpy as np
 
 class Adam:
     """ Implementation of the Adam optimiser as described in :cite:t:`Kingma2015`.
+    
+    Parameters for the optimiser may be specified using a configuration dictionary.
+    All parameters unspecified will be set to the default values below.
+
+         - `alpha` = 1e-3, maximum step size parameter
+         - `beta_1` = 0.9, first decay rate for momentum estimate
+         - `beta_2`  = 0.999, second decay rate for momentum estimate
+         - `eps` = 1e-8
+         - `max_iter` = 10, maximum number of iterations in optimisation
+
+    :param config: dictionary of parameters for the optimiser
     """
 
     def __init__(self, config=None):
@@ -38,13 +49,7 @@ class Adam:
 
     def set_parameters_from_config(self, config):
         """Set parameters for the Adam optimisater using a configuration dictionary.
-        Unspecified parameters are set to the defaults as:
-
-         - `alpha` = 1e-3
-         - `beta_1` = 0.9
-         - `beta_2`  = 0.999
-         - `eps` = 1e-8
-         - `max_iter` = 10
+        Unspecified parameters are set to the defaults as in the initialisation of the class.
 
         :param config: dictionary of parameters for the optimiser
         """
