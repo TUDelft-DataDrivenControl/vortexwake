@@ -42,5 +42,3 @@ The code itself may be referenced as
     }
 
 
-Licence
--------
