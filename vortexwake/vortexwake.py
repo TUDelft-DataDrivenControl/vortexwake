@@ -7,8 +7,10 @@ from time import time
 
 
 class VortexWake:
-    """Class for wake simulation with Free-Vortex method.
+    """Base class for wake simulation with Free-Vortex method.
     2D or 3D, with discrete adjoint for gradients.
+
+    Initialise either `VortexWake2D` or `VortexWake3D` to run.
 
     """
 
@@ -62,8 +64,8 @@ class VortexWake:
     def states_from_state_vector(self, q):
         """Unpack state column vector into state arrays
 
-        :param q:
-        :return:
+        :param q: full state vector of size [num_states]
+        :return: tuple of state arrays (X,G,U,M)
         """
         X = q[self.X_index_start: self.X_index_end].reshape(self.total_rings, self.num_points, self.dim)
         G = q[self.G_index_start: self.G_index_end].reshape(self.total_rings, self.num_elements, 1)
@@ -72,13 +74,13 @@ class VortexWake:
         return X, G, U, M
 
     def state_vector_from_states(self, X, G, U, M):
-        """Pack state arrays into a single column vector
+        """Pack state arrays into a single state vector
 
-        :param X:
-        :param G:
-        :param U:
-        :param M:
-        :return:
+        :param X: vortex element positions [num_rings x num_points x dim]
+        :param G: vortex element strengths [num_rings x num_elements]
+        :param U: stored inflow velocity [num_rings x num_points x dim]
+        :param M: stored controls [total_controls]
+        :return: full state vector of size [num_states]
         """
         q = np.zeros((self.num_states, 1))
         q[self.X_index_start:self.X_index_end:self.dim, 0] = X[:, :, 0].ravel()
@@ -99,7 +101,7 @@ class VortexWake:
     def initialise_states(self):
         """Initialise states for start of numerical simulation
 
-        :return: states
+        :return: tuple of state arrays (X,G,U,M)
         """
         X, G, U, M = self.states_from_state_vector(np.zeros((self.num_states, 1)))
         (X0, G0, U0, M0), derivatives = self.new_rings(np.zeros((self.num_states, 1)), np.zeros(self.total_controls),
@@ -112,13 +114,14 @@ class VortexWake:
         return X, G, U, M
 
     def new_rings(self, states, controls, inflow, with_tangent=False):
-        """Generate values for new rings to initialised.
+        """Generate values for new rings to be initialised.
 
-        :param states: state vector
-        :param controls: control vector
-        :param inflow: inflow [dim] or [num_points x dim]
-        :param with_tangent:
-        :return: new ring states, new ring state derivatives
+        :param states: state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param inflow: inflow vector [dim] or [num_points x dim]
+        :param with_tangent: boolean, calculate partial derivatives if `True`
+        :return: tuple of new ring states (X0, G0, U0, M0),
+             tuple of new ring state derivatives
         """
         X0 = np.zeros((self.num_turbines, self.num_points, self.dim))
         G0 = np.zeros((self.num_turbines, self.num_elements, 1))
@@ -202,7 +205,16 @@ class VortexWake:
 
         return (X0, G0, U0, M0), ((dX0_dq, dX0_dm), (dG0_dq, dG0_dm), (dU0_dq, dU0_dm), (dM0_dq, dM0_dm))
 
-    def disc_velocity(self, states, controls, with_tangent, all_turbines=False):
+    def disc_velocity(self, states, controls, with_tangent=False, all_turbines=False):
+        """Calculate disc-averaged velocity for the (virtual) turbines in the simulation.
+
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :param all_turbines:  boolean, include virtual turbines if `True`
+        :return: disc-averaged velocity [num_turbines x dim],
+            partial derivatives
+        """
         nt = self.total_turbines if all_turbines else self.num_turbines
         pt = np.zeros((nt,) + self.rotor_disc_points.shape)
         ur = np.zeros((nt, self.dim))
@@ -224,6 +236,17 @@ class VortexWake:
         return ur, dur_dq, dur_dm
 
     def run_forward(self, initial_state, control_series, inflow_series, num_steps, with_tangent):
+        """Run forward simulation of the Free-Vortex Wake model for a given initial condition, set of controls, inflow
+        over time, and number of simulation steps.
+
+        :param initial_state: state vector for start of simulation [num_states]
+        :param control_series: control signals over time [num_steps x total_controls]
+        :param inflow_series: inflow vector over time [num_steps x dim] or [num_steps x num_points x dim]
+        :param num_steps: number of discrete time steps to simulate
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: simulated state trajectory [num_steps+1 x num_states],
+            partial derivatives
+        """
         state_history = np.zeros((num_steps + 1, self.num_states))
         q = initial_state.copy()
         state_history[0] = q.T
@@ -257,10 +280,10 @@ class VortexWake:
     def calculate_power(self, states, controls, with_tangent):
         """ Calculate power from turbines simulated with free-vortex wake and virtual turbines
 
-        :param states:
-        :param controls:
-        :param with_tangent:
-        :return:
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: power [total_turbines] and partial derivatives
         """
         X, G, U, M = self.states_from_state_vector(states)
         a = M[self.induction_idx::self.num_controls, 0]
@@ -309,12 +332,12 @@ class VortexWake:
     def evaluate_objective_function(self, states, controls, Q, R, with_tangent):
         """Evaluate objective function for optimisation
 
-        :param states:
-        :param controls:
-        :param Q:
-        :param R:
-        :param with_tangent:
-        :return:
+        :param states: state trajectory [num_steps+1 x num_states]
+        :param controls: control series [num_steps x total_controls]
+        :param Q: output weight [num_steps+1 x total_turbines]
+        :param R: input weight [num_steps+1 x total_controls x total_controls]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: objective function evaluated per simulation step [num_steps] and partial derivatives
         """
         num_steps = states.shape[0] - 1
 
@@ -344,6 +367,9 @@ class VortexWake:
 
 
 class VortexWake2D(VortexWake):
+    """2D Free-Vortex Wake implementation.
+
+    """
     def __init__(self, config_file):
         self.dim = 2
 
@@ -364,8 +390,15 @@ class VortexWake2D(VortexWake):
         self.rotor_disc_weights = w
         self.rotor_disc_weights_tiled = (w @ np.eye(self.dim)[:, None, :]).reshape(self.dim, self.dim * len(w))
 
-    # todo: def velocity()
     def velocity(self, states, controls, points, with_tangent):
+        """Calculation of velocity at specified spatial coordinates.
+
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param points: spatial coordinates to evaluate [? x 2]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: velocity at each coordinate [? x 2] and partial derivatives
+        """
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
         inflow_vector = np.reshape(free_flow, (-1, 2))
 
@@ -531,6 +564,14 @@ class VortexWake2D(VortexWake):
         return result, du_dq, du_dm, du_dp
 
     def update_state(self, states, controls, inflow, with_tangent):
+        """Update the state vector one discrete time step with given controls and inflow.
+
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param inflow: inflow vector [dim] or [num_points x dim]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: updated state [num_states] and partial derivatives
+        """
         states = states.copy()
         new_states, new_state_derivatives = self.new_rings(states, controls, inflow, with_tangent)
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
@@ -790,6 +831,14 @@ class VortexWake3D(VortexWake):
         self.rotor_disc_weights_tiled = (w @ np.eye(self.dim)[:, None, :]).reshape(self.dim, self.dim * len(w))
 
     def velocity(self, states, controls, points, with_tangent):
+        """Calculation of velocity at specified spatial coordinates.
+
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param points: spatial coordinates to evaluate [? x 3]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: velocity at each coordinate [? x 3] and partial derivatives
+        """
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(
             states)
 
@@ -1285,6 +1334,14 @@ class VortexWake3D(VortexWake):
         return result, du_dq, du_dm, du_dp
 
     def update_state(self, states, controls, inflow, with_tangent):
+        """Update the state vector one discrete time step with given controls and inflow.
+
+        :param states: full state vector [num_states]
+        :param controls: control vector [total_controls]
+        :param inflow: inflow vector [3] or [num_points x 3]
+        :param with_tangent:  boolean, calculate partial derivatives if `True`
+        :return: updated state [num_states] and partial derivatives
+        """
         states = states.copy()
         elements, vortex_strengths, free_flow, saved_controls = self.states_from_state_vector(states)
         nr_states, nr_derivatives = self.new_rings(states, controls, inflow, with_tangent)

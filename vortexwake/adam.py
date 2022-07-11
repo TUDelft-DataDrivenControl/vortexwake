@@ -3,7 +3,7 @@ import numpy as np
 
 class Adam:
     """ Implementation of the Adam optimiser as described in :cite:t:`Kingma2015`.
-    
+
     Parameters for the optimiser may be specified using a configuration dictionary.
     All parameters unspecified will be set to the default values below.
 
