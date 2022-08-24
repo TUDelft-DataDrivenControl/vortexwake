@@ -42,19 +42,16 @@ Slower integration tests and gradient verification
 
 ## Citation
 
-If this work plays a role in your research, please cite the following paper:
+If this work plays a role in your research, please cite the following preprint for the paper :
 
->  Maarten J. van den Broek, Benjamin Sanderse, Jan-Willem van Wingerden, 'Free-Vortex Wake Modelling and Adjoint Optimisation for Wind Farm Flow Control', Energies, 2022
+>  Maarten J. van den Broek, Benjamin Sanderse, Jan-Willem van Wingerden, 'Adjoint Optimisation for Wind
+Farm Flow Control with a Free-Vortex Wake Model', ArXiv, 2022
 
-    @article{vandenbroek2022Energies,
+    @misc{vandenbroek2022,
         author = {van den Broek, Maarten J. and Sanderse, Benjamin and van Wingerden, Jan-Willem},
-        title = {{Free-Vortex Wake Modelling and Adjoint Optimisation for Wind Farm Flow Control}},
-        journal = {Energies},
-        year = {2022},
-        volume = {},
-        pages = {},
-        publisher = {MDPI},
-        doi =  {}
+        title = {{Adjoint Optimisation for Wind Farm Flow Control with a Free-Vortex Wake Model}},
+        publisher = {arXiv},
+        year = {2022}
     }
 
 
