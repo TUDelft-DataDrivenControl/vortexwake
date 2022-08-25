@@ -42,17 +42,20 @@ Slower integration tests and gradient verification
 
 ## Citation
 
-If this work plays a role in your research, please cite the following preprint for the paper :
+If this work plays a role in your research, please cite the following preprint for the paper, available on [arXiv](https://doi.org/10.48550/arXiv.2208.11516):
 
 >  Maarten J. van den Broek, Delphine De Tavernier, Benjamin Sanderse, Jan-Willem van Wingerden, 'Adjoint Optimisation for Wind
 Farm Flow Control with a Free-Vortex Wake Model', ArXiv, 2022
 
-    @misc{vandenbroek2022,
-        author = {van den Broek and Maarten J. De Tavernier, Delphine and Sanderse, Benjamin and van Wingerden, Jan-Willem},
-        title = {{Adjoint Optimisation for Wind Farm Flow Control with a Free-Vortex Wake Model}},
+    @misc{vandenbroek2022vortexwakeArxiv,
+        doi = {10.48550/ARXIV.2208.11516},
+        url = {https://arxiv.org/abs/2208.11516},
+        author = {van den Broek, Maarten J. and De Tavernier, Delphine and Sanderse, Benjamin and van Wingerden, Jan-Willem},
+        title = {Adjoint Optimisation for Wind Farm Flow Control with a Free-Vortex Wake Model},
         publisher = {arXiv},
-        year = {2022}
+        year = {2022},
     }
+
 
 
 The code itself may be referenced as:
